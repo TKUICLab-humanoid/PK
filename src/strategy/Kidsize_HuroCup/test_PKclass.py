@@ -286,11 +286,11 @@ class motor_move():
             if abs(Position - 2048) > max_head_horizon_size: 
                 if (Position - 2048) >= 0:
                     Position = 2048 + max_head_horizon_size
-                    print("1")
+
                     
                 elif (Position - 2048) <= 0:
                     Position = 2048 - max_head_horizon_size
-                    print("2")
+
 
                 self.head_horizon = Position
                 send.sendHeadMotor(ID, Position, Speed)
@@ -298,7 +298,7 @@ class motor_move():
             else :
                 self.head_horizon = Position
                 send.sendHeadMotor(ID, Position, Speed)
-                print("3")
+
 
         elif ID == 2:
             # self.head_vertical = Position
@@ -354,11 +354,11 @@ class motor_move():
     def body_trace_rotate(self,spot_degree,error): #我要到的角度 , 誤差 
         self.body_rotate = self.head_horizon - spot_degree
         if self.body_rotate > error:
-            motor.MoveContinuous(left_correct[0], left_correct[1], left_correct[2], 100, 100, 2)
+            motor.MoveContinuous(left_correct[0], left_correct[1], left_correct[2], 100, 100, 1)
             print("go left = ", self.body_rotate)
             time.sleep(0.05)
         elif self.body_rotate < -error:
-            motor.MoveContinuous(right_correct[0], right_correct[1], right_correct[2], 100, 100,2)  # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            motor.MoveContinuous(right_correct[0], right_correct[1], right_correct[2], 100, 100,1)  # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             print("go right = ", self.body_rotate)
             time.sleep(0.05)
 
@@ -387,12 +387,12 @@ class motor_move():
     def body_trace_straight(self, spot_degree, error): #目標的點  ,誤差
 
             if (self.head_vertical - spot_degree) < -error:
-                motor.MoveContinuous(1900 + correct[0], 0 + correct[1], 0 + correct[2], 100, 100,2)  # !!!!!!!!!!!!!!!!!!!!!!
+                motor.MoveContinuous(1900 + correct[0], 0 + correct[1], 0 + correct[2], 100, 100,1)  # !!!!!!!!!!!!!!!!!!!!!!
                 print("go ahead  ", self.head_vertical)
                 time.sleep(0.05)
 
             elif (self.head_vertical - spot_degree) > error:
-                motor.MoveContinuous(-1500 + correct[0], 0 + correct[1], 0 + correct[2], 100, 100, 2)
+                motor.MoveContinuous(-1500 + correct[0], 0 + correct[1], 0 + correct[2], 100, 100, 1)
                 print("go back = ", self.head_vertical)
                 time.sleep(0.05)
             elif abs(self.head_vertical - spot_degree) <= error:
@@ -408,16 +408,16 @@ class motor_move():
     def body_trace_basket_straight_2(self, degree, basket_error):
 
         if self.head_vertical - degree > basket_error and self.head_vertical > 1980:
-            motor.MoveContinuous(2600 + correct[0], 0 + correct[1], 0 + correct[2], 100, 100, 2)  # !!!!!!!!!!!!!!!
+            motor.MoveContinuous(2600 + correct[0], 0 + correct[1], 0 + correct[2], 100, 100, 1)  # !!!!!!!!!!!!!!!
             print("--------------------go ahead bbbb to basket---------------------  ", self.head_vertical)
             time.sleep(0.05)
 
         elif self.head_vertical - degree > basket_error and self.head_vertical < 1980:
-            motor.MoveContinuous(1000 + correct[0], 0 + correct[1], 0 + correct[2], 100, 100, 2)  # !!!!!!!!!!!!!!!
+            motor.MoveContinuous(1000 + correct[0], 0 + correct[1], 0 + correct[2], 100, 100, 1)  # !!!!!!!!!!!!!!!
             print("--------------------go ahead sss to basket---------------------  ", self.head_vertical)
             time.sleep(0.05)
         elif self.head_vertical - degree < basket_error and abs(self.head_vertical - degree) > basket_error:
-            motor.MoveContinuous(-800 + correct[0], 0 + correct[1], 0 + correct[2], 100, 100, 2)  # !!!!!!!!!!!!!!
+            motor.MoveContinuous(-800 + correct[0], 0 + correct[1], 0 + correct[2], 100, 100, 1)  # !!!!!!!!!!!!!!
 
             print("--------------------go back from basket-------------------- ", self.head_vertical)
             time.sleep(0.05)
@@ -545,16 +545,18 @@ if __name__ == '__main__':
     cnt = 3
     i, x = 0, 0
 
-    correct = [-100, 0, -2]
-    left_correct = [-100, 0, 6]
-    right_correct = [-100, 0, -6]
+    correct = [-1100, 0, 0]
+    left_correct = [-1400,0,4]
+    right_correct = [-1400,0,-4]
     #                  x , y , theta
     rotate_mistake = 80
-    kick_degree , kick_error = 2850, 50
+    kick_degree , kick_error = 2850, 100
     # 第一次小踢
     kick_degree2 , kick_error2 = 2650, 50
     #直接射門
     kick_degree_mistake = 50
+
+    over = 0
 
     
     
@@ -571,14 +573,14 @@ if __name__ == '__main__':
 #=============================================================================================================  開始
 #---------------open_ball----------------------open_ball-------------------open_ball---------------open_ball--------------open_ball
                 if step == "begin":
-                    # send.sendBodySector(22)
+                    send.sendBodySector(18)
                     time.sleep(1)
-                    # send.sendBodySector(299)
+                    send.sendBodySector(20)
                     send.sendSensorReset()
                     time.sleep(0.5)
                     print(send.imu_value_Yaw,send.imu_value_Pitch,send.imu_value_Roll)
                     
-                    time.sleep(1.5)
+                    
                     
                     step = "test"
                     
@@ -587,13 +589,15 @@ if __name__ == '__main__':
                     
                     # motor.trace_revise(target.ball_x, target.ball_y, 25)
                     # print('ver', motor.head_vertical, "hor", motor.head_horizon)
-                    # time.sleep(0.2)
+                    time.sleep(0.2)
                     
                     motor.move_head(2,2770,880,880,50)
                     time.sleep(2)
-                    # motor.bodyauto_close(1)
+                    motor.bodyauto_close(1)
+                    motor.MoveContinuous(-1400,0, 0, 100, 100, 1)
+                    time.sleep(1)
                     # print(target.obs_size_left,target.obs_size_right)
-                    step = "kick.search_to_ball"  
+                    step = "open_ball.search_to_ball"  
                     
                     # time.sleep(0.05)
                     # step = "open_ball.search_to_ball"
@@ -608,16 +612,16 @@ if __name__ == '__main__':
                     send.drawImageFunction(8, 0, 180, 180, 0, 320, 255, 255, 255)  # 對球中心線
                     print(target.ball_size)
                     target.ball_parameter()
-                    print("cnt", cnt)
                     if cnt > 0:
                         if target.ball_x_min < 180:
                             print("go left")
+                            motor.MoveContinuous(-1400, 1400, 0, 100, 100, 1)
                             cnt = 3  #要讓球最小值離開過三次界線才跳出 預防步態不穩
                         else:
                             cnt -= 1
                     else:
                         cnt = 2
-                        time.sleep(1)
+                        time.sleep(0.2)
                         step = "open_ball.trace_ball"
 
                 elif step == "open_ball.trace_ball":
@@ -634,7 +638,7 @@ if __name__ == '__main__':
                             
                             print("-")
                     else:
-                        time.sleep(1)
+                        time.sleep(0.2)
                         step = "open_ball.rotate_to_ball"
                         print("jump")
                         cnt = 2
@@ -653,14 +657,20 @@ if __name__ == '__main__':
                         motor.body_trace_rotate(2048,rotate_mistake)
                         print("motor.head_vertical=", motor.head_vertical)
 
+                    
+                    elif abs(motor.head_vertical - kick_degree) > kick_error:     #如果太遠
+                        if motor.head_vertical - kick_degree < kick_error :
+                            motor.MoveContinuous(-700,0,0, 100, 100,1)
+                            print("前進") 
+                        elif motor.head_vertical - kick_degree > kick_error :
+                            motor.MoveContinuous(-1500,0,0, 100, 100,1)
+                            print("後退")  
+
                     elif abs(motor.head_vertical - kick_degree) <= kick_error:     #跟球距離洽當就踢   20 要再側
                         print("small kick")  #小踢
-                        step ="obs.serch_to _ball"
-
-
-                    elif abs(motor.head_vertical - kick_degree) > kick_error:     #如果太遠
-                        print("前進")  
-
+                        motor.bodyauto_close(0)
+                        time.sleep(4)
+                        step ="obs.search_to_ball"
 
 
 #======================================================================================================================
@@ -688,7 +698,7 @@ if __name__ == '__main__':
                         time.sleep(0.05)
                     else:
                         time.sleep(0.2)
-                        
+                        motor.bodyauto_close(1)
                         
                         step = 'obs.walk_to_ball'
 #=====================================================================================================================
@@ -704,11 +714,23 @@ if __name__ == '__main__':
                         motor.body_trace_rotate(2048,rotate_mistake)
                         print("motor.head_vertical=========", motor.head_vertical)
 
-                    else:
-                        motor.move_head(2, 2800, 880, 880, 30)#頭往下
+                    else :
+                        motor.move_head(2, 2400, 880, 880, 30)#頭往下
+                        print("obs.obs_before_start")
+                        time.sleep(2)
+                        step = "obs.obs_before_start"
+
+                elif step =="obs.obs_before_start":
+                    target.obs_parameter() 
+                    if target.obs_y_max_left < 120:
+                        print("go ahead")
+                        motor.MoveContinuous(-700 + correct[0], 0 + correct[1], 0 + correct[2], 100, 100,1)
+                    else :
+                        motor.move_head(2, 2780, 880, 880, 30)#頭往下
                         print("obs.obs_start")
-                        time.sleep(1)
+                        time.sleep(2)
                         step = "obs.obs_start"
+
 
                 elif step == 'obs.obs_start':
                     
@@ -722,7 +744,7 @@ if __name__ == '__main__':
                     print(target.obs_size_left , target.obs_size_right)
                     print("x ",(target.obs_x_max_left_list, target.obs_x_min_right_list))
 
-                    if target.line_y_max[0] > 180:
+                    if target.line_y_max[0] > 180 and over == 1:
                         print("get out line out")
                         step = "obs.obs_check"
 #                                                       <-----線出可能沒有用 
@@ -730,20 +752,22 @@ if __name__ == '__main__':
                     elif target.obs_size_left > 0 or target.obs_size_right > 0:
                         if target.obs_x_max_left > 70:
                             print("turn right")
-                            motor.MoveContinuous(left_correct[0], left_correct[1], left_correct[2], 100, 100, 2)
+                            motor.MoveContinuous(left_correct[0], left_correct[1], left_correct[2], 100, 100, 1)
                         elif target.obs_x_min_right < 250:
                             print('turn left')
-                            motor.MoveContinuous(right_correct[0], right_correct[1], right_correct[2], 100, 100, 2)
+                            motor.MoveContinuous(right_correct[0], right_correct[1], right_correct[2], 100, 100, 1)
                         elif target.obs_x_max_left < 70 and target.obs_x_min_right > 250:
                             print("go ahead")
-                            motor.MoveContinuous(100 + correct[0], 0 + correct[1], 0 + correct[2], 100, 100, 2)
+                            motor.MoveContinuous(100 + correct[0], 0 + correct[1], 0 + correct[2], 100, 100,1)
+                        over = 1
 
                     elif target.obs_size_left > 0 or target.obs_size_right > 0:
                         # target.line_size[0] = 0
                         motor.MoveContinuous(100 + correct[0], 0 + correct[1], 0 + correct[2], 100, 100,2)
                         print("go ahead ssss line")
 
-                    elif target.obs_size_left == 0 and target.obs_size_right == 0:
+                    elif target.obs_size_left == 0 and target.obs_size_right == 0 and over == 1:
+
                         print("get out")
                         step = "obs.obs_check"
                    
