@@ -550,7 +550,7 @@ if __name__ == '__main__':
     right_correct = [-1400,0,-4]
     #                  x , y , theta
     rotate_mistake = 80
-    kick_degree , kick_error = 2850, 100
+    kick_degree , kick_error = 2850, 20
     # 第一次小踢
     kick_degree2 , kick_error2 = 2650, 50
     #直接射門
@@ -597,7 +597,7 @@ if __name__ == '__main__':
                     motor.MoveContinuous(-1400,0, 0, 100, 100, 1)
                     time.sleep(1)
                     # print(target.obs_size_left,target.obs_size_right)
-                    step = "open_ball.search_to_ball"  
+                    step = "obs.search_to_ball"  
                     
                     # time.sleep(0.05)
                     # step = "open_ball.search_to_ball"
@@ -656,21 +656,32 @@ if __name__ == '__main__':
                         target.ball_parameter()
                         motor.body_trace_rotate(2048,rotate_mistake)
                         print("motor.head_vertical=", motor.head_vertical)
+                        cnt = 2
 
                     
                     elif abs(motor.head_vertical - kick_degree) > kick_error:     #如果太遠
                         if motor.head_vertical - kick_degree < kick_error :
-                            motor.MoveContinuous(-700,0,0, 100, 100,1)
+                            motor.MoveContinuous(200,0,0, 100, 100,1)
                             print("前進") 
+                            cnt = 2
                         elif motor.head_vertical - kick_degree > kick_error :
                             motor.MoveContinuous(-1500,0,0, 100, 100,1)
                             print("後退")  
+                            cnt = 2
 
                     elif abs(motor.head_vertical - kick_degree) <= kick_error:     #跟球距離洽當就踢   20 要再側
                         print("small kick")  #小踢
+                        
+                        
+                        cnt = cnt -1
+                        
+
+                    if cnt == 0 : 
                         motor.bodyauto_close(0)
                         time.sleep(4)
                         step ="obs.search_to_ball"
+                       
+                        cnt = 2
 
 
 #======================================================================================================================
