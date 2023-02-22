@@ -37,25 +37,25 @@ class target_location():
         
 #==========================================================================================================================暫存的 
 #left obs暫存
-        self.obs_x_left_list = [0,0,0,0,0,0,0,0,0,0]
-        self.obs_y_left_list = [0,0,0,0,0,0,0,0,0,0]
-        self.obs_width_left_list = [0,0,0,0,0,0,0,0,0,0]
-        self.obs_height_left_list = [0,0,0,0,0,0,0,0,0,0]
-        self.obs_x_min_left_list = [0,0,0,0,0,0,0,0,0,0]
-        self.obs_y_min_left_list = [0,0,0,0,0,0,0,0,0,0]
-        self.obs_x_max_left_list = [0,0,0,0,0,0,0,0,0,0]
-        self.obs_y_max_left_list = [0,0,0,0,0,0,0,0,0,0]
-        self.obs_size_left_list = [0,0,0,0,0,0,0,0,0,0]
+        self.obs_x_left_list = [0]
+        self.obs_y_left_list = [0]
+        self.obs_width_left_list = [0]
+        self.obs_height_left_list = [0]
+        self.obs_x_min_left_list = [0]
+        self.obs_y_min_left_list = [0]
+        self.obs_x_max_left_list = [0]
+        self.obs_y_max_left_list = [0]
+        self.obs_size_left_list = [0]
 #right obs暫存
-        self.obs_x_right_list = [0,0,0,0,0,0,0,0,0,0]
-        self.obs_y_right_list = [0,0,0,0,0,0,0,0,0,0]
-        self.obs_width_right_list = [0,0,0,0,0,0,0,0,0,0]
-        self.obs_height_right_list = [0,0,0,0,0,0,0,0,0,0]
-        self.obs_x_min_right_list = [0,0,0,0,0,0,0,0,0,0]
-        self.obs_y_min_right_list = [0,0,0,0,0,0,0,0,0,0]
-        self.obs_x_max_right_list = [0,0,0,0,0,0,0,0,0,0]
-        self.obs_y_max_right_list = [0,0,0,0,0,0,0,0,0,0]
-        self.obs_size_right_list = [0,0,0,0,0,0,0,0,0,0]
+        self.obs_x_right_list = [0]
+        self.obs_y_right_list = [0]
+        self.obs_width_right_list = [0]
+        self.obs_height_right_list = [0]
+        self.obs_x_min_right_list = [0]
+        self.obs_y_min_right_list = [0]
+        self.obs_x_max_right_list = [0]
+        self.obs_y_max_right_list = [0]
+        self.obs_size_right_list = [0]
 #==========================================================================================================================
 #line
         self.line_x = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
@@ -86,74 +86,57 @@ class target_location():
 #left obs暫存
     def obs_parameter(self):
         #left obs暫存
-        self.obs_x_left_list = [0,0,0,0,0,0,0,0,0,0]
-        self.obs_y_left_list = [0,0,0,0,0,0,0,0,0,0]
-        self.obs_width_left_list = [0,0,0,0,0,0,0,0,0,0]
-        self.obs_height_left_list = [0,0,0,0,0,0,0,0,0,0]
-        self.obs_x_min_left_list = [0,0,0,0,0,0,0,0,0,0]
-        self.obs_y_min_left_list = [0,0,0,0,0,0,0,0,0,0]
-        self.obs_x_max_left_list = [0,0,0,0,0,0,0,0,0,0]
-        self.obs_y_max_left_list = [0,0,0,0,0,0,0,0,0,0]
-        self.obs_size_left_list = [0,0,0,0,0,0,0,0,0,0]
-#right obs暫存
-        self.obs_x_right_list = [0,0,0,0,0,0,0,0,0,0]
-        self.obs_y_right_list = [0,0,0,0,0,0,0,0,0,0]
-        self.obs_width_right_list = [0,0,0,0,0,0,0,0,0,0]
-        self.obs_height_right_list = [0,0,0,0,0,0,0,0,0,0]
-        self.obs_x_min_right_list = [0,0,0,0,0,0,0,0,0,0]
-        self.obs_y_min_right_list = [0,0,0,0,0,0,0,0,0,0]
-        self.obs_x_max_right_list = [0,0,0,0,0,0,0,0,0,0]
-        self.obs_y_max_right_list = [0,0,0,0,0,0,0,0,0,0]
-        self.obs_size_right_list = [0,0,0,0,0,0,0,0,0,0]
         self.color_mask_subject_blue = send.color_mask_subject_cnts[2]
         for j in range(self.color_mask_subject_blue):
             if send.color_mask_subject_size[2][j] > 500:
                 if send.color_mask_subject_XMin[2][j] > 160 and send.color_mask_subject_XMax[2][j] <= 320:
-                    self.obs_x_right_list[j] = send.color_mask_subject_X[2][j]
-                    self.obs_y_right_list[j]  = send.color_mask_subject_Y[2][j]
-                    self.obs_size_right_list[j]  = send.color_mask_subject_size[2][j]
-                    self.obs_x_min_right_list[j]  = send.color_mask_subject_XMin[2][j]
-                    self.obs_y_min_right_list[j]  = send.color_mask_subject_YMin[2][j]
-                    self.obs_x_max_right_list[j]  = send.color_mask_subject_XMax[2][j]
-                    self.obs_y_max_right_list[j]  = send.color_mask_subject_YMax[2][j]
-                    self.obs_width_right_list[j]  = send.color_mask_subject_Width[2][j]
-                    self.obs_height_right_list[j]  = send.color_mask_subject_Height[2][j]
+                    self.obs_x_right_list.append(send.color_mask_subject_X[2][j])
+                    self.obs_y_right_list.append(send.color_mask_subject_Y[2][j])
+                    self.obs_size_right_list.append( send.color_mask_subject_size[2][j])
+                    self.obs_x_min_right_list.append(send.color_mask_subject_XMin[2][j])
+                    self.obs_y_min_right_list.append(send.color_mask_subject_YMin[2][j])
+                    self.obs_x_max_right_list.append(send.color_mask_subject_XMax[2][j])
+                    self.obs_y_max_right_list.append(send.color_mask_subject_YMax[2][j])
+                    self.obs_width_right_list.append(send.color_mask_subject_Width[2][j])
+                    self.obs_height_right_list.append( send.color_mask_subject_Height[2][j])
                 
 
 
                 elif send.color_mask_subject_XMax[2][j] < 160 and send.color_mask_subject_XMin[2][j] >=0:
-                    self.obs_x_left_list[j]  = send.color_mask_subject_X[2][j]
-                    self.obs_y_left_list[j]  = send.color_mask_subject_Y[2][j]
-                    self.obs_size_left_list[j]  = send.color_mask_subject_size[2][j]
-                    self.obs_x_min_left_list[j]  = send.color_mask_subject_XMin[2][j]
-                    self.obs_y_min_left_list[j]  = send.color_mask_subject_YMin[2][j]
-                    self.obs_x_max_left_list[j]  = send.color_mask_subject_XMax[2][j]
-                    self.obs_y_max_left_list[j]  = send.color_mask_subject_YMax[2][j]
-                    self.obs_width_left_list[j]  = send.color_mask_subject_Width[2][j]
-                    self.obs_height_left_list[j]  = send.color_mask_subject_Height[2][j]
+                    self.obs_x_left_list.append(send.color_mask_subject_X[2][j])
+                    self.obs_y_left_list.append(send.color_mask_subject_Y[2][j])
+                    self.obs_size_left_list.append(send.color_mask_subject_size[2][j])
+                    self.obs_x_min_left_list.append(send.color_mask_subject_XMin[2][j])
+                    self.obs_y_min_left_list.append(send.color_mask_subject_YMin[2][j])
+                    self.obs_x_max_left_list.append( send.color_mask_subject_XMax[2][j])
+                    self.obs_y_max_left_list.append(send.color_mask_subject_YMax[2][j])
+                    self.obs_width_left_list.append(send.color_mask_subject_Width[2][j])
+                    self.obs_height_left_list.append( send.color_mask_subject_Height[2][j])
 
 
             elif  send.color_mask_subject_size[2][j] < 500:
                 if send.color_mask_subject_XMin[2][j] > 160 and send.color_mask_subject_XMax[2][j] <= 320:
-                    self.obs_x_right_list[j] = 0
-                    self.obs_y_right_list[j] = 0
-                    self.obs_width_right_list[j] = 0
-                    self.obs_height_right_list[j] = 0
-                    self.obs_x_min_right_list[j] = 0
-                    self.obs_y_min_right_list[j] = 0
-                    self.obs_x_max_right_list[j] = 0
-                    self.obs_y_max_right_list[j] = 0
-                    self.obs_size_right_list[j] = 0
-                elif  send.color_mask_subject_XMax[2][j] < 160 and send.color_mask_subject_XMin[2][j] >=0:
-                    self.obs_x_left_list[j] = 0
-                    self.obs_y_left_list[j] = 0
-                    self.obs_width_left_list[j] = 0
-                    self.obs_height_left_list[j] = 0
-                    self.obs_x_min_left_list[j] = 0
-                    self.obs_y_min_left_list[j] = 0
-                    self.obs_x_max_left_list[j] = 0
-                    self.obs_y_max_left_list[j] = 0
-                    self.obs_size_left_list[j] = 0
+                    self.obs_x_right_list.append(0)
+                    self.obs_y_right_list.append(0)
+                    self.obs_width_right_list.append(0)
+                    self.obs_height_right_list.append(0)
+                    self.obs_x_min_right_list.append(0)
+                    self.obs_y_min_right_list.append(0)
+                    self.obs_x_max_right_list.append(0)
+                    self.obs_y_max_right_list.append(0)
+                    self.obs_size_right_list.append(0)
+                elif  send.color_mask_subject_XMax[2][j] < 160 and send.color_mask_subject_XMin[2][j] >= 0:
+                    self.obs_x_left_list.append(0)
+                    self.obs_y_left_list.append(0)
+                    self.obs_width_left_list.append(0)
+                    self.obs_height_left_list.append(0)
+                    self.obs_x_min_left_list.append(0)
+                    self.obs_y_min_left_list.append(0)
+                    self.obs_x_max_left_list.append(0)
+                    self.obs_y_max_left_list.append(0)
+                    self.obs_size_left_list.append(0)
+
+        
 #====================================================================================================================================
 # 把list的最大值輸進去
         self.obs_x_right = max(self.obs_x_right_list)
@@ -164,7 +147,6 @@ class target_location():
         self.obs_y_min_right = max(self.obs_y_min_right_list)
         self.obs_x_max_right = max( self.obs_x_max_right_list)
         self.obs_y_max_right = max(self.obs_y_max_right_list)
-
         self.obs_size_right = max(self.obs_size_right_list)
         
         self.obs_x_left = max(self.obs_x_left_list)
@@ -176,10 +158,34 @@ class target_location():
         self.obs_x_max_left = max( self.obs_x_max_left_list)
         self.obs_y_max_left = max(self.obs_y_max_left_list)
         self.obs_size_left = max(self.obs_size_left_list)
+#left obs暫存
+        self.obs_x_left_list = [0]
+        self.obs_y_left_list = [0]
+        self.obs_width_left_list = [0]
+        self.obs_height_left_list = [0]
+        self.obs_x_min_left_list = [0]
+        self.obs_y_min_left_list = [0]
+        self.obs_x_max_left_list = [0]
+        self.obs_y_max_left_list = [0]
+        self.obs_size_left_list = [0]
+#right obs暫存
+        self.obs_x_right_list = [0]
+        self.obs_y_right_list = [0]
+        self.obs_width_right_list = [0]
+        self.obs_height_right_list = [0]
+        self.obs_x_min_right_list = [0]
+        self.obs_y_min_right_list = [0]
+        self.obs_x_max_right_list = [0]
+        self.obs_y_max_right_list = [0]
+        self.obs_size_right_list = [0]
+        # obs若移動過快會無法歸零！！！！！！！！！！
+
+
+
 
 
 #==========================================================================================================================================
-# obs若移動過快會無法歸零！！！！！！！！！！
+
 
     def ball_parameter(self):
         self.color_mask_subject_orange = send.color_mask_subject_cnts[0]
@@ -220,6 +226,7 @@ class target_location():
         self.ball_x_max_list = [0]
         self.ball_y_max_list = [0]
 
+#===============================================================================================================================
 
     def line_parameter(self):
         self.color_mask_subject_white = send.color_mask_subject_cnts[6]
@@ -545,9 +552,9 @@ if __name__ == '__main__':
     cnt = 3
     i, x = 0, 0
 
-    correct = [-1100, 0, 0]
-    left_correct = [-1400,0,4]
-    right_correct = [-1400,0,-4]
+    correct = [0, 0, 0]
+    left_correct = [0,0,3]
+    right_correct = [0,0,-3]
     #                  x , y , theta
     rotate_mistake = 80
     kick_degree , kick_error = 2850, 20
@@ -557,6 +564,7 @@ if __name__ == '__main__':
     kick_degree_mistake = 50
 
     over = 0
+    fucking_obs = 3
 
     
     
@@ -573,9 +581,8 @@ if __name__ == '__main__':
 #=============================================================================================================  開始
 #---------------open_ball----------------------open_ball-------------------open_ball---------------open_ball--------------open_ball
                 if step == "begin":
-                    send.sendBodySector(18)
-                    time.sleep(1)
-                    send.sendBodySector(20)
+                    
+                    send.sendBodySector(1)
                     send.sendSensorReset()
                     time.sleep(0.5)
                     print(send.imu_value_Yaw,send.imu_value_Pitch,send.imu_value_Roll)
@@ -592,10 +599,10 @@ if __name__ == '__main__':
                     time.sleep(0.2)
                     
                     motor.move_head(2,2770,880,880,50)
-                    time.sleep(2)
-                    motor.bodyauto_close(1)
-                    motor.MoveContinuous(-1400,0, 0, 100, 100, 1)
                     time.sleep(1)
+                    # motor.bodyauto_close(1)
+                    motor.MoveContinuous(0,0, 0, 100, 100, 1)
+                    time.sleep(0.5)
                     # print(target.obs_size_left,target.obs_size_right)
                     step = "obs.search_to_ball"  
                     
@@ -615,7 +622,7 @@ if __name__ == '__main__':
                     if cnt > 0:
                         if target.ball_x_min < 180:
                             print("go left")
-                            motor.MoveContinuous(-1400, 1400, 0, 100, 100, 1)
+                            motor.MoveContinuous(0, 1400, 0, 100, 100, 1)
                             cnt = 3  #要讓球最小值離開過三次界線才跳出 預防步態不穩
                         else:
                             cnt -= 1
@@ -661,11 +668,11 @@ if __name__ == '__main__':
                     
                     elif abs(motor.head_vertical - kick_degree) > kick_error:     #如果太遠
                         if motor.head_vertical - kick_degree < kick_error :
-                            motor.MoveContinuous(200,0,0, 100, 100,1)
+                            motor.MoveContinuous(1000,0,0, 100, 100,1)
                             print("前進") 
                             cnt = 2
                         elif motor.head_vertical - kick_degree > kick_error :
-                            motor.MoveContinuous(-1500,0,0, 100, 100,1)
+                            motor.MoveContinuous(-1000,0,0, 100, 100,1)
                             print("後退")  
                             cnt = 2
 
@@ -678,7 +685,8 @@ if __name__ == '__main__':
 
                     if cnt == 0 : 
                         motor.bodyauto_close(0)
-                        time.sleep(4)
+                        time.sleep(5)
+                        send.sendBodySector(999)
                         step ="obs.search_to_ball"
                        
                         cnt = 2
@@ -697,11 +705,12 @@ if __name__ == '__main__':
                         time.sleep(0.05)
                         target.ball_parameter()
                     elif target.ball_size > 800:
-                        time.sleep(1)
+                        time.sleep(0.5)
                         step = 'obs.trace_ball'   #小踢完確認球在哪
                         
 
                 elif step == 'obs.trace_ball':  # 持續盯著球
+                    target.ball_parameter()
                     if abs(target.ball_x - 160) > 8 or abs(target.ball_y - 120) > 6:
                         target.ball_parameter()
                         motor.trace_revise(target.ball_x, target.ball_y, 25)
@@ -728,16 +737,16 @@ if __name__ == '__main__':
                     else :
                         motor.move_head(2, 2400, 880, 880, 30)#頭往下
                         print("obs.obs_before_start")
-                        time.sleep(2)
+                        time.sleep(0.5)
                         step = "obs.obs_before_start"
 
                 elif step =="obs.obs_before_start":
                     target.obs_parameter() 
-                    if target.obs_y_max_left < 120:
+                    if target.obs_y_max_left < 120 or target.obs_y_max_right < 120 :
                         print("go ahead")
-                        motor.MoveContinuous(-700 + correct[0], 0 + correct[1], 0 + correct[2], 100, 100,1)
+                        motor.MoveContinuous(500 + correct[0], 0 + correct[1], 0 + correct[2], 100, 100,1)
                     else :
-                        motor.move_head(2, 2780, 880, 880, 30)#頭往下
+                        motor.move_head(2, 2600, 880, 880, 30)#頭往下
                         print("obs.obs_start")
                         time.sleep(2)
                         step = "obs.obs_start"
@@ -748,12 +757,12 @@ if __name__ == '__main__':
                     target.obs_parameter()
                     target.line_parameter()
                     send.drawImageFunction(4, 0, 0, 320, 100, 100, 255, 0, 0)
-                    send.drawImageFunction(5, 0, 70, 70, 0, 240, 100, 255, 0)  # 左(green)
-                    send.drawImageFunction(6, 0, 250, 250, 0, 240, 100, 255, 0)  # 右(green)
+                    send.drawImageFunction(5, 0, 80, 80, 0, 240, 100, 255, 0)  # 左(green)
+                    send.drawImageFunction(6, 0, 240, 240, 0, 240, 100, 255, 0)  # 右(green)
                     send.drawImageFunction(7, 0, 0, 320, 180, 180, 0, 0, 0)  # 黑線界線(black) 看白線
                     time.sleep(0.05)
                     print(target.obs_size_left , target.obs_size_right)
-                    print("x ",(target.obs_x_max_left_list, target.obs_x_min_right_list))
+                    #print("x ",(target.obs_x_max_left_list, target.obs_x_min_right_list))
 
                     if target.line_y_max[0] > 180 and over == 1:
                         print("get out line out")
@@ -761,27 +770,39 @@ if __name__ == '__main__':
 #                                                       <-----線出可能沒有用 
                         # motor.bodyauto_close(0)
                     elif target.obs_size_left > 0 or target.obs_size_right > 0:
-                        if target.obs_x_max_left > 70:
+                        if target.obs_x_max_left > 80 :
                             print("turn right")
-                            motor.MoveContinuous(left_correct[0], left_correct[1], left_correct[2], 100, 100, 1)
-                        elif target.obs_x_min_right < 250:
-                            print('turn left')
                             motor.MoveContinuous(right_correct[0], right_correct[1], right_correct[2], 100, 100, 1)
-                        elif target.obs_x_max_left < 70 and target.obs_x_min_right > 250:
+                            
+                        elif target.obs_x_min_right < 240 and target.obs_x_max_right != 0:
+                            print('turn left')
+                            motor.MoveContinuous(left_correct[0], left_correct[1], left_correct[2], 100, 100, 1)
+                        elif(target.obs_x_min_right >= 240 or target.obs_x_min_right == 0) and  target.obs_x_max_left <= 80:
                             print("go ahead")
-                            motor.MoveContinuous(100 + correct[0], 0 + correct[1], 0 + correct[2], 100, 100,1)
+                            motor.MoveContinuous(1500 + correct[0], 0 + correct[1], 0 + correct[2], 100, 100,1)
                         over = 1
 
                     elif target.obs_size_left > 0 or target.obs_size_right > 0:
                         # target.line_size[0] = 0
-                        motor.MoveContinuous(100 + correct[0], 0 + correct[1], 0 + correct[2], 100, 100,2)
+                        motor.MoveContinuous(50 + correct[0], 0 + correct[1], 0 + correct[2], 100, 100,2)
                         print("go ahead ssss line")
 
                     elif target.obs_size_left == 0 and target.obs_size_right == 0 and over == 1:
+                        if fucking_obs == 3 :
+                            fucking_obs = 2
+                            motor.move_head(2, 2650, 880, 880, 30)
+                        elif fucking_obs == 2:
+                            fucking_obs = 1
+                            motor.move_head(2, 2710, 880, 880, 30)
+                        elif fucking_obs == 1:
+                            fucking_obs = 0
+                            motor.move_head(2, 2780, 880, 880, 30) 
+                        elif fucking_obs ==0 :
 
-                        print("get out")
-                        step = "obs.obs_check"
-                   
+                            motor.bodyauto_close(0)
+                            print("get out")
+                            step = "obs.obs_chec"
+                        
 
                 elif step == 'obs.obs_check':
                     target.obs_parameter()
