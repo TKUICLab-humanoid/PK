@@ -553,13 +553,13 @@ if __name__ == '__main__':
     i, x = 0, 0
     
 
-    level_left_correct = [-1100, 1500, -1]
+    level_left_correct = [-1100, 1900, -1]
     correct = [-1500, -300, 0]    
     left_correct = [-1300,300,4]
     right_correct = [-700,300,-4]
     #                  x , y , theta
     rotate_mistake = 50
-    kick_degree , kick_error = 2820, 30
+    kick_degree , kick_error = 2850, 30
     # 第一次小踢
     kick_degree2 , kick_error2 = 2700, 30
     #直接射門
@@ -629,11 +629,11 @@ if __name__ == '__main__':
                 #         motor.trace_revise(target.obs_x,target.obs_y_max,30)
 
                 elif step == "open_ball.search_to_ball":  #開球是往左平移
-                    send.drawImageFunction(8, 0, 165, 165, 0, 320, 255, 255, 255)  # 對球中心線
+                    send.drawImageFunction(8, 0, 180, 180, 0, 320, 255, 255, 255)  # 對球中心線
                     print(target.ball_size)
                     target.ball_parameter()
                     if cnt > 0:
-                        if target.ball_x_min < 165:
+                        if target.ball_x_min < 180:
                             print("go left")
                             motor.MoveContinuous(level_left_correct[0], level_left_correct[1], level_left_correct[2], 500, 500, 1)
                             cnt = 3  #要讓球最小值離開過三次界線才跳出 預防步態不穩
@@ -644,27 +644,10 @@ if __name__ == '__main__':
                         time.sleep(0.2)
                         step = "open_ball.trace_ball"
 
-                elif step == "open_ball.trace_ball":
-                    target.ball_parameter()
-                    motor.trace_revise(target.ball_x, target.ball_y, 25)#守在裡面 會一直左上飄
-                    if cnt > 0 :
-                        if abs(target.ball_x - 160) < 8 or  abs(target.ball_y - 120) < 6: # 10要測
-
-                            print("open_ball_trace")  # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-                            # time.sleep(0.05)
-                            cnt = cnt - 1
-                        else:
-                            cnt = 2
-                            
-                            print("-")
-                    else:
-                        time.sleep(0.2)
-                        step = "open_ball.rotate_to_ball"
-                        print("jump")
-                        cnt = 2
+                
                         
 
-                elif step == 'open_ball.rotate_to_ball':
+                elif step == 'open_ball.trace_ball':
                     target.ball_parameter()
                     # print("open rotating")  # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                     # motor.bodyauto_close(1)
@@ -678,11 +661,7 @@ if __name__ == '__main__':
                         
                         cnt = cnt -1
 
-                    elif abs(motor.head_horizon - 2248) > rotate_mistake:      #朝求方向旋轉
-                        target.ball_parameter()
-                        motor.body_trace_rotate(2248,rotate_mistake)
-                        print("motor.head_vertical=", motor.head_vertical)
-                        cnt = 2
+                    
 
                     
                     elif abs(motor.head_vertical - kick_degree) > kick_error:     #如果太遠
@@ -700,8 +679,8 @@ if __name__ == '__main__':
 
                     if cnt ==  0: 
                         motor.bodyauto_close(0)
-                        time.sleep(2)
-                        send.sendBodySector(999)
+                        time.sleep(4)
+                        send.sendBodySector(7770)
                         step ="obs.search_to_ball"
                         time.sleep(2)
                         cnt = 2
