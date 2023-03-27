@@ -199,7 +199,7 @@ class target_location():
     def obs2_parameter(self):
         self.color_mask_subject_blue2 = send.color_mask_subject_cnts[2]
         for j in range(self.color_mask_subject_blue2):
-            if send.color_mask_subject_XMin[2][j] >100:
+            if send.color_mask_subject_XMin[2][j] > 50 and send.color_mask_subject_XMax[2][j] < 300:
                 if send.color_mask_subject_size[2][j] > 600 and send.color_mask_subject_XMin[2][j] <250:
                     self.obs2_x_list.append(send.color_mask_subject_X[2][j])
                     self.obs2_y_list.append(send.color_mask_subject_Y[2][j])
@@ -448,7 +448,7 @@ class motor_move():
     def body_trace_straight(self, spot_degree, error): #目標的點  ,誤差
 
             if (self.head_vertical - spot_degree) < -error:
-                motor.MoveContinuous(2000 + correct[0], 0 + correct[1], 0 + correct[2], 500 , 500,1)  # !!!!!!!!!!!!!!!!!!!!!!
+                motor.MoveContinuous(3000 + correct[0], 0 + correct[1], 0 + correct[2], 500 , 500,1)  # !!!!!!!!!!!!!!!!!!!!!!
                 print("go ahead  ", self.head_vertical)
                 time.sleep(0.05)
 
@@ -610,11 +610,11 @@ if __name__ == '__main__':
     cnt = 3
     i, x = 0, 0
     
-    correct = [-1500, -400, -1]    
-    left_correct = [-1700, -500,3]
-    right_correct = [-1500, -400,-3]
-    level_left_correct = [-1200, 1800, 0]
-    level_right_correct = [-900, -2000, 0]
+    correct = [-1300, -400, 0]    
+    level_left_correct = [-1300, 900, 0] 
+    level_right_correct = [-1300, -3000, 0] 
+    left_correct = [-1500, -400, 3] 
+    right_correct = [-1500, -400, -3] 
     
     #                  x , y , theta
     rotate_mistake = 50
@@ -690,14 +690,14 @@ if __name__ == '__main__':
                 #         motor.trace_revise(target.obs_x,target.obs_y_max,30)
 
                 elif step == "open_ball.search_to_ball":  #開球是往左平移
-                    send.drawImageFunction(8, 0,180, 180, 0, 320, 255, 255, 255)  # 對球中心線
+                    send.drawImageFunction(8, 0,175, 175, 0, 320, 255, 255, 255)  # 對球中心線
                     print(target.ball_size)
                     target.ball_parameter()
                     
     
                     if cnt > 0:
                     
-                        if target.ball_x_min < 180:
+                        if target.ball_x_min < 175:
                             print("go left")
                             motor.MoveContinuous(level_left_correct[0], level_left_correct[1], level_left_correct[2], 500, 500, 1)
                             cnt = 3  #要讓球最小值離開過三次界線才跳出 預防步態不穩
@@ -727,7 +727,7 @@ if __name__ == '__main__':
                             motor.imu_yaw_reset(0,5)
                             print("reset ")
                             cnt = 2
-
+                
                     
                     elif abs(motor.head_vertical - kick_degree) > kick_error:     #如果太遠
                         if motor.head_vertical - kick_degree < kick_error :
@@ -760,11 +760,11 @@ if __name__ == '__main__':
 
                 elif step == "obs.avoid_obs":
                     # motor.bodyauto_close(1)
-                    send.drawImageFunction(10, 0, 140, 140, 0, 320, 255, 0, 255)  # 對球中心線
+                    send.drawImageFunction(10, 0, 80, 80, 0, 320, 255, 0, 255)  # 對球中心線
                     target.obs2_parameter()
                     print(target.obs2_x_max,"dfdfdfd")
                     if cnt > 0:
-                        if target.obs2_x_max > 140:
+                        if target.obs2_x_max > 65:
                             print("go righthshfjgjgjg") #右平移
                             motor.MoveContinuous(level_right_correct[0], level_right_correct[1], level_right_correct[2], 500, 500, 1)
                             cnt = 3  #要讓球最小值離開過三次界線才跳出 預防步態不穩
@@ -820,6 +820,8 @@ if __name__ == '__main__':
                     target.obs_parameter()
                     motor.trace_revise(target.ball_x, target.ball_y, 50)
                     send.drawImageFunction(3, 1, target.ball_x_min, target.ball_x_max, target.ball_y_min,target.ball_y_max, 255, 0, 255) #對球畫框定位球位置
+                    send.drawImageFunction(5, 0, 100, 100, 0, 240, 100, 255, 0)  # 左(green)
+                    send.drawImageFunction(6, 0, 220, 220, 0, 240, 100, 255, 0)  # 右(green)
                     print("left_obs",target.ball_x_min - target.obs_x_max_left)
                     print("right_obs",target.obs_x_min_right - target.ball_x_max)
                     # 畫不出線不知道就重開！！
@@ -834,7 +836,28 @@ if __name__ == '__main__':
                         motor.bodyauto_close(0)
                         step = "obs."
 
-                    elif (target.ball_x_min - target.obs_x_max_left > 10 and target.obs_x_min_right - target.ball_x_max > 10) or (target.obs_size_left <= 0 and target.obs_size_right <= 0):
+                    elif target.obs_size_left > 0 or target.obs_size_right > 0:
+                        if target.obs_x_max_left > 100 :
+                            print("turn right obsobsobs")
+                            motor.MoveContinuous(right_correct[0]+2000, right_correct[1], right_correct[2], 500, 500, 1)
+                            
+                        elif target.obs_x_min_right < 220 and target.obs_x_max_right != 0:
+                            print('turn left obsobsobs')
+                            motor.MoveContinuous(left_correct[0]+2000, left_correct[1], left_correct[2], 500, 500, 1)
+                        else:
+                            if abs(motor.head_horizon - 2048) > rotate_mistake:#純轉向球
+                                motor.body_trace_rotate(2048,rotate_mistake)
+                                print("motor.head_vertical=========", motor.head_vertical)
+
+                            elif abs(motor.head_vertical - kick_degree2) > kick_error2: 
+                                target.ball_parameter()
+                                motor.body_trace_straight(kick_degree2 ,kick_error2)
+
+                            elif abs(motor.head_vertical - kick_degree2) < kick_error2:
+                                motor.step_jump = True
+                                print("hi")
+
+                    elif(target.obs_size_left <= 0 and target.obs_size_right <= 0):
                         if abs(motor.head_horizon - 2048) > rotate_mistake:#純轉向球
                             motor.body_trace_rotate(2048,rotate_mistake)
                             print("motor.head_vertical=========", motor.head_vertical)
@@ -842,6 +865,14 @@ if __name__ == '__main__':
                         elif abs(motor.head_vertical - kick_degree2) > kick_error2: 
                             target.ball_parameter()
                             motor.body_trace_straight(kick_degree2 ,kick_error2)
+
+                        elif abs(motor.head_vertical - kick_degree2) < kick_error2:
+                            motor.step_jump = True
+                            print("hi")
+                    
+                    
+
+                        
 
             
                 # elif step =="obs.obs_before_start":

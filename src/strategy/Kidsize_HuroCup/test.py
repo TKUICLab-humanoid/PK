@@ -446,22 +446,22 @@ class motor_move():
 
 
     def body_trace_straight(self, spot_degree, error): #目標的點  ,誤差
-            if abs(self.head_vertical - spot_degree) <= error:
-                # send.sendBodyAuto(0,0,0,0,1,0)
-                self.step_jump = True
-                print("hi")
-                time.sleep(0.05)
 
-            elif (self.head_vertical - spot_degree) < -error:
-                motor.MoveContinuous(1500 + correct[0], 0 + correct[1], 0 + correct[2], 500 , 500,1)  # !!!!!!!!!!!!!!!!!!!!!!
+            if (self.head_vertical - spot_degree) < -error:
+                motor.MoveContinuous(2000 + correct[0], 0 + correct[1], 0 + correct[2], 500 , 500,1)  # !!!!!!!!!!!!!!!!!!!!!!
                 print("go ahead  ", self.head_vertical)
                 time.sleep(0.05)
 
             elif (self.head_vertical - spot_degree) > error:
-                motor.MoveContinuous(-1800 + correct[0], 0 + correct[1], 0 + correct[2], 500 , 500,1)
+                motor.MoveContinuous(-900 + correct[0], 0 + correct[1], 0 + correct[2], 500 , 500,1)
                 print("go back = ", self.head_vertical)
                 time.sleep(0.05)
-   
+            
+            elif abs(self.head_vertical - spot_degree) <= error:
+                # send.sendBodyAuto(0,0,0,0,1,0)
+                self.step_jump = True
+                print("hi")
+                time.sleep(1)
 
 
 
@@ -610,18 +610,18 @@ if __name__ == '__main__':
     cnt = 3
     i, x = 0, 0
     
-    correct = [-1300, -400, -1]    
-    left_correct = [-1600, -400,4]
-    right_correct = [-1600, -400,-3]
-    level_left_correct = [-1200, 1800, 0]
-    level_right_correct = [-900, -2000, 0]
+    correct = [-1300, -400, 0]    
+    level_left_correct = [-1300, 900, 0] 
+    level_right_correct = [-1300, 1300, 0] 
+    left_correct = [-1500, -400, 3] 
+    right_correct = [-1500, -400, -3] 
     
     #                  x , y , theta
     rotate_mistake = 50
     kick_degree , kick_error = 2825, 30
 
     # 第一次小踢
-    kick_degree2 , kick_error2 = 2760, 30
+    kick_degree2 , kick_error2 = 2740, 30
     #直接射門
     kick_degree_mistake = 50
 
@@ -649,7 +649,7 @@ if __name__ == '__main__':
                     time.sleep(0.5)
                     print(send.imu_value_Yaw,send.imu_value_Pitch,send.imu_value_Roll)
                     
-                    
+                    3
                     
                     step = "test"
                     
@@ -660,9 +660,8 @@ if __name__ == '__main__':
                     # motor.trace_revise(target.ball_x, target.ball_y, 25)
                     # print('ver', motor.head_vertical, "hor", motor.head_horizon)
                     time.sleep(0.2)
-                    
                     motor.move_head(1,1900,880,880,50)
-                    motor.move_head(2,2400,880,880,50)
+                    motor.move_head(2,2500,880,880,50)
                     time.sleep(1)
                     motor.bodyauto_close(1)
                     
@@ -820,25 +819,22 @@ if __name__ == '__main__':
                     target.ball_parameter()
                     target.obs_parameter()
                     motor.trace_revise(target.ball_x, target.ball_y, 50)
-                    # send.drawImageFunction(3, 1, target.ball_x_min, target.ball_x_max, target.ball_y_min,target.ball_y_max, 255, 0, 255) #對球畫框定位球位置
+                    send.drawImageFunction(3, 1, target.ball_x_min, target.ball_x_max, target.ball_y_min,target.ball_y_max, 255, 0, 255) #對球畫框定位球位置
                     print("left_obs",target.ball_x_min - target.obs_x_max_left)
                     print("right_obs",target.obs_x_min_right - target.ball_x_max)
                     # 畫不出線不知道就重開！！
-
+                    if motor.head_horizon > 2650:
+                        rotate_mistake = 110
                 
                     if motor.step_jump == True :
-                        target.ball_parameter()
-                        target.obs_parameter()
+                        motor.step_jump = False
                         motor.move_head(2, 2500, 880, 880, 30)#頭往下
-                        print("asdfghjkl;asdfghjkl")
+                        print("obs.obs_before_start")
                         time.sleep(0.5)
                         motor.bodyauto_close(0)
                         step = "obs."
-                        motor.step_jump = False
 
-                    elif (target.ball_x_min - target.obs_x_max_left > 10 and target.obs_x_min_right - target.ball_x_max > 10) or (target.obs_size_left <= 0 and target.obs_size_right <= 0):
-                        target.ball_parameter()
-                        target.obs_parameter()
+                    elif (target.ball_x_min - target.obs_x_max_left > 7 and target.obs_x_min_right - target.ball_x_max > 7) or (target.obs_size_left <= 0 and target.obs_size_right <= 0):
                         if abs(motor.head_horizon - 2048) > rotate_mistake:#純轉向球
                             motor.body_trace_rotate(2048,rotate_mistake)
                             print("motor.head_vertical=========", motor.head_vertical)
@@ -846,10 +842,18 @@ if __name__ == '__main__':
                         elif abs(motor.head_vertical - kick_degree2) > kick_error2: 
                             target.ball_parameter()
                             motor.body_trace_straight(kick_degree2 ,kick_error2)
-                    else:
-                        print("kjhgjhghjghjgfjhg")
 
+                        elif abs(motor.head_vertical - kick_degree2) < kick_error2:
+                            motor.step_jump = True
+                            print("hi")
+                            time.sleep(0.2)
+                    elif abs(target.obs_x_min_right - target.ball_x_max) <= 7:
+                        target.ball_parameter()
+                        target.obs_parameter()
+                        motor.MoveContinuous(left_correct[0]+1500, left_correct[1], left_correct[2], 500, 500, 1)
+                        print("asdfghjkl;sdfghjk")
 
+            
                 # elif step =="obs.obs_before_start":
                 #     target.obs_parameter() 
                 #     if target.obs_y_max_left < 120 or target.obs_y_max_right < 120 :
