@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding=utf-8
 from cmath import sqrt
-from re import T
+from re import S, T
 import time
 from traceback import print_tb
 
@@ -581,10 +581,10 @@ class motor_move():
         self.yaw_fix = send.imu_value_Yaw - fix  # imu_value_yaw 當前yaw值
         if abs(self.yaw_fix) > error_imu:  # fix要修去的值
             if self.yaw_fix > 0:  # yaw_fix yaw要修的值
-                print("turn right")  # error_imu 容忍範圍的誤差
+                print("imu turn right")  # error_imu 容忍範圍的誤差
                 motor.MoveContinuous(right_correct[0], right_correct[1], right_correct[2], 500, 500, 1)
             elif self.yaw_fix < 0:
-                print("turn left")
+                print("imu turn left")
                 motor.MoveContinuous(left_correct[0], left_correct[1], left_correct[2], 500, 500, 1)
 
         elif abs(self.yaw_fix) < error_imu:
@@ -611,10 +611,11 @@ if __name__ == '__main__':
     i, x = 0, 0
     
     correct = [-1300, -400, 0]    
-    level_left_correct = [-1300, 900, 0] 
+    level_left_correct = [-1500, 3000, 1] 
     level_right_correct = [-1300, -3000, 0] 
     left_correct = [-1500, -400, 3] 
     right_correct = [-1500, -400, -3] 
+    slowdown = [0,0]
     
     #                  x , y , theta
     rotate_mistake = 50
@@ -658,57 +659,138 @@ if __name__ == '__main__':
                     # send.sendBodySector(1218)
                     # send.sendBodySector(1820)  #縮右腳
                     # motor.trace_revise(target.ball_x, target.ball_y, 25)
-                    # print('ver', motor.head_vertical, "hor", motor.head_horizon)
-                    time.sleep(0.2)
-                    
-                    motor.move_head(2,2770,880,880,50)
-                    time.sleep(1)
-                    motor.bodyauto_close(1)
+                    # print('ver', motor.head_vertical, "hor", motor.head_
+                   
                     
 
                     time.sleep(0.1)
                     # print(target.obs_size_left,target.obs_size_right)
-                    step = "open_ball.search_to_ball"  
-                    # step = "obs.avoid_obs"
-                    
-                    # time.sleep(0.05)
-                    # step = "open_ball.search_to_belif step =="obs.obs_before_start":
-                #     target.obs_parameter() 
-                #     if target.obs_y_max_left < 120 or target.obs_y_max_right < 120 :
-                #         print("go ahead")
-                #         motor.MoveContinuous(500 + correct[0], 0 + correct[1], 0 + correct[2], 100, 100,1)
-                #     else :
-                #         motor.move_head(2, 2600, 880, 880, 30)#頭往下
-                #         print("obs.obs_start")
-                #         time.sleep(2)
-                #  all"
-                    # step = "obs.search_to_ball"
-                    # step = "open_ball.walk_to_ball"
-                # if (cnt > 0 ):
-                #     motor.view_move
-                #     if (target.obs_size > 4000):
-                #         motor.trace_revise(target.obs_x,target.obs_y_max,30)
+                    step = "open_ball.start_search_ball"  
+            
+                elif step == "open_ball.start_search_ball":#小踢完後收尋球確認球的位置
+                    motor.MoveContinuous(correct[0],correct[1], correct[2], 500,500,1) #原地踏步
 
-                elif step == "open_ball.search_to_ball":  #開球是往左平移
-                    send.drawImageFunction(8, 0,175, 175, 0, 320, 255, 255, 255)  # 對球中心線
+                    target.ball_parameter()
+                    if target.ball_size < 800:  # 500要測
+                        # motor.view_move(2448, 1648, 2550,2250, 70, 0.05)
+                        # bbbbbbbbbbb
+                        motor.view_move(2648, 1448, 2550,2300, 70, 0.05)
+                        # sssssssssss
+                        time.sleep(0.05)
+                        target.ball_parameter()
+                    elif target.ball_size > 800:
+                        time.sleep(0.1)
+                        step = 'open_ball.start_trace_ball'   #小踢完確認球在哪
+
+
+                elif step == 'open_ball.start_trace_ball':  # 持續盯著球
+                    print("aaa",target.ball_size)
+                    target.ball_parameter()
+                    if abs(target.ball_x - 160) > 8 or abs(target.ball_y - 120) > 6:
+                        target.ball_parameter()
+                        motor.trace_revise(target.ball_x, target.ball_y, 50)
+                        print("obs_trace")  # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                        time.sleep(0.05)
+                    else:
+                        if motor.head_horizon >= 1856:
+                            time.sleep(0.05)
+                            motor.move_head(1,2048,880,880,50)
+                            motor.move_head(2,2770,880,880,50)
+                            time.sleep(0.05)
+                            motor.bodyauto_close(1)
+                            time.sleep(0.1)
+                            step = "open_ball.search_to_ball_left"
+                        else:
+                            time.sleep(0.05)
+                            motor.move_head(1,2048,880,880,50)
+                            motor.move_head(2,2770,880,880,50)
+                            time.sleep(0.05)
+                            motor.bodyauto_close(1)
+                            time.sleep(0.1)
+                            target.ball_parameter()
+                            step = "open_ball.search_to_ball_right"
+
+
+                elif step == "open_ball.search_to_ball_left":  #開球是往左平移
+                    send.drawImageFunction(8, 0,180, 180, 0, 320, 255, 255, 255)  # 對球中心線
                     print(target.ball_size)
                     target.ball_parameter()
                     
+                    # if target.ball_x_min >60 and target.ball_x_min != 0:
+                    #     slowdown = [0,1000]
+                    #     print("slow slow slow")
+                    # else:
+                    #     slowdown = [0,0]
     
                     if cnt > 0:
                     
-                        if target.ball_x_min < 175:
+                        if target.ball_x_min < 180:
                             print("go left")
-                            motor.MoveContinuous(level_left_correct[0], level_left_correct[1], level_left_correct[2], 500, 500, 1)
+                            motor.MoveContinuous(level_left_correct[0]-slowdown[0], level_left_correct[1]-slowdown[1], level_left_correct[2], 500, 500, 1)
                             cnt = 3  #要讓球最小值離開過三次界線才跳出 預防步態不穩
                         else:
                             cnt -= 1
-                    else:
-                        cnt = 2
-                        time.sleep(0.2)
-                        step = "open_ball.trace_ball"
 
-                
+                    elif cnt <= 0 and abs(send.imu_value_Yaw) > 5:
+                        target.ball_parameter()
+                        motor.imu_yaw_reset(0,5)
+                        print(motor.step_jump,cnt)
+                        
+
+                    elif cnt <= 0 and abs(send.imu_value_Yaw) <= 5:
+                        target.ball_parameter()
+                        time.sleep(0.2)
+                        if target.ball_x_min < 180:
+                            cnt = 3
+                            time.sleep(1)
+                        else:
+                            cnt = 2
+                            time.sleep(0.2)
+                            motor.step_jump = False
+                            target.ball_parameter()
+                            step = "open_ball.trace_ball"
+
+
+                       
+
+                elif step == "open_ball.search_to_ball_right":  #開球是往左平移
+                    send.drawImageFunction(8, 0,175, 175, 0, 320, 255, 255, 255)  # 對球中心線
+                    print(target.ball_x_min,cnt)
+                    target.ball_parameter()
+                    
+                    # if target.ball_x_min > 280 and target.ball_x_min != 0:
+                    #     slowdown = [0,1000]
+                    #     print("slow slow slow")
+                    # else:
+                    #     slowdown = [0,0]
+    
+                    if cnt > 0:
+                    
+                        if target.ball_x_min > 200 or target.ball_x_min == 0:
+                            print("go right")
+                            motor.MoveContinuous(level_right_correct[0]-slowdown[0], level_right_correct[1]-slowdown[1], level_right_correct[2], 500, 500, 1)
+                            cnt = 3  #要讓球最小值離開過三次界線才跳出 預防步態不穩
+                        else:
+                            cnt -= 1
+
+                    elif cnt <= 0 and abs(send.imu_value_Yaw) > 5:
+                        target.ball_parameter()
+                        motor.imu_yaw_reset(0,5)
+                        print(motor.step_jump,cnt)
+                        
+
+                    elif cnt <= 0 and abs(send.imu_value_Yaw) <= 5:
+                        target.ball_parameter()
+                        time.sleep(0.2)
+                        if target.ball_x_min > 200:
+                            cnt = 3
+                            time.sleep(1)
+                        else:
+                            cnt = 2
+                            time.sleep(0.2)
+                            motor.step_jump = False
+                            target.ball_parameter()
+                            step = "open_ball.trace_ball"         
                         
 
                 elif step == 'open_ball.trace_ball':
@@ -952,9 +1034,6 @@ if __name__ == '__main__':
                         motor.step_jump = False
                         print("close walking")  
                         motor.bodyauto_close(0)
-                        send.sendBodySector(8787)
-                        time.sleep(1)
-                        send.sendBodySector(7878)
                         time.sleep(1)
                         step = "xx"
                 elif step == 'xx':
