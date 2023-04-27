@@ -19,8 +19,8 @@ RIGHT_CORRECT = [-1500, -400, -3]
 LOOK_BALL = 2600  #預先讓頭轉至大概角度
 SLOWDOWN = [0,0]
 ROTATE_MISTAKE = 50  # x , y , theta
-KICK_DEGREE , KICK_ERROR = 2850, 30# 第一次小踢
-KICK_DEGREE2 , KICK_ERROR2 = 2740, 30 #直接射門
+KICK_DEGREE , KICK_ERROR = 2840, 20# 第一次小踢
+KICK_DEGREE2 , KICK_ERROR2 = 2710, 20 #直接射門
 KICK_DEGREE_MISTAKE = 50
 
 class TargetLocation():
@@ -154,7 +154,7 @@ class TargetLocation():
         self.color_mask_subject_blue_second = send.color_mask_subject_cnts[2]
         for j in range(self.color_mask_subject_blue_second):
             if send.color_mask_subject_size[2][j] > 500:
-                if send.color_mask_subject_XMin[2][j] > 160 and send.color_mask_subject_XMax[2][j] <= 320:
+                if send.color_mask_subject_XMin[2][j] > 170 and send.color_mask_subject_XMax[2][j] <= 320:
                     self.obs_x_right_list.append(send.color_mask_subject_X[2][j])
                     self.obs_y_right_list.append(send.color_mask_subject_Y[2][j])
                     self.obs_size_right_list.append( send.color_mask_subject_size[2][j])
@@ -205,11 +205,7 @@ class TargetLocation():
         self.obs_y_right = max(self.obs_y_right_list)
         self.obs_width_right = max(self.obs_width_right_list)
         self.obs_height_right = max(self.obs_height_right_list)
-        self.obs_x_min_right = max(self.obs_x_min_right_list)
-        self.obs_y_min_right = max(self.obs_y_min_right_list)
-        self.obs_x_max_right = max( self.obs_x_max_right_list)
-        self.obs_y_max_right = max(self.obs_y_max_right_list)
-        self.obs_size_right = max(self.obs_size_right_list)
+        self.obs_x_min_right = max(self.obs_size_right_list)
         
         self.obs_x_left = max(self.obs_x_left_list)
         self.obs_y_left = max(self.obs_y_left_list)
@@ -400,7 +396,7 @@ class MotorMove():
             elif self.body_straight < 0:
                 rospy.loginfo("go ahead")
         else:
-            motor.step_jump = True
+            self.step_jump = True
 
     def body_trace_straight(self, spot_degree, error):                                      #直走到達目標的點,誤差
             if (self.head_vertical - spot_degree) < -error:
@@ -494,14 +490,16 @@ class StepState():
             motor.trace_revise(target.ball_x, target.ball_y, 50)
             time.sleep(0.05)
         else:
+            rospy.loginfo(f"motor.head_horizon{motor.head_horizon}")
             if motor.head_horizon >= left_or_right:
                 time.sleep(0.05)
                 motor.move_head(1, 2048, 880, 880, 50)
                 motor.move_head(2, 2770, 880, 880, 50)
                 time.sleep(0.05)
                 motor.bodyauto_close(1)
+                motor.MoveContinuous(CORRECT[0], CORRECT[1], CORRECT[2], 500, 500, 1)  # 原地踏步
                 time.sleep(0.1)
-                rospy.loginfo("find")
+                rospy.loginfo("find left left left")
                 self.step_now  = "walk_ball_left"
             else:
                 time.sleep(0.05)
@@ -509,9 +507,10 @@ class StepState():
                 motor.move_head(2, 2770, 880, 880, 50)
                 time.sleep(0.05)
                 motor.bodyauto_close(1)
+                motor.MoveContinuous(CORRECT[0], CORRECT[1], CORRECT[2], 500, 500, 1)  # 原地踏步
                 time.sleep(0.1)
                 target.ball_parameter()
-                rospy.loginfo("find")
+                rospy.loginfo("find right right right")
                 self.step_now = "walk_ball_right"
 
     def step_walk_ball_left(self,bound):
@@ -544,7 +543,7 @@ class StepState():
         elif motor.cnt <= 0:
             rospy.loginfo("bb")
             time.sleep(0.2)
-            self.step_jump = True
+            motor.step_jump = True
 
     def step_kick_trace_ball(self):
         target.ball_parameter()
@@ -574,8 +573,32 @@ class StepState():
             motor.move_head(1, 2048, 880, 880, 50)
             time.sleep(6)
             motor.bodyauto_close(1)
+            motor.MoveContinuous(CORRECT[0], CORRECT[1], CORRECT[2], 500, 500, 1) 
             self.step_now = "imu_reset_obs"
             motor.cnt = 5
+
+    def step_score_ahead(self,score_vertical):
+        target.ball_parameter()
+        rospy.loginfo(f"ver{motor.head_vertical}")  # 小踢
+        motor.trace_revise(target.ball_x, target.ball_y, 50)  # 追蹤球
+        if abs(motor.head_vertical - score_vertical) <= 30:  # 跟球距離洽當就踢   20 要再側
+            rospy.loginfo("small kick")  # 小踢
+            motor.cnt = motor.cnt - 1
+        elif abs(send.imu_value_Yaw) > 5:
+            motor.imu_yaw_reset(0, 5)
+            rospy.loginfo("reset ")
+            motor.cnt = 2
+        elif abs(motor.head_vertical - score_vertical) > 30:  # 如果太遠
+            if motor.head_vertical - score_vertical < score_vertical:
+                motor.MoveContinuous(CORRECT[0] + 2200, CORRECT[1], CORRECT[2], 500, 500, 1)
+                rospy.loginfo("前進")
+                motor.cnt = 2
+            elif motor.head_vertical - score_vertical > 30:
+                motor.MoveContinuous(CORRECT[0] - 300, CORRECT[1], CORRECT[2], 500, 500, 1)
+                rospy.loginfo("後退")
+                motor.cnt = 2
+        if motor.cnt == 0:
+            motor.step_jump = True
 
     def step_imu_reset_obs(self):
         motor.imu_yaw_reset(0, 5)
@@ -758,17 +781,17 @@ class StepState():
             self.step_test()
 
         elif self.step_now == "search_ball":#小踢完後收尋球確認球的位置
-            motor.MoveContinuous(CORRECT[0], CORRECT[1], CORRECT[2], 500, 500, 1)  # 原地踏步
+            # motor.MoveContinuous(CORRECT[0], CORRECT[1], CORRECT[2], 500, 500, 1)  # 原地踏步
             self.step_search_ball(2448, 1648, 2550, 2250)
             if motor.step_jump:
                 self.step_now = "start_trace_ball"
                 motor.step_jump = False
 
         elif self.step_now == 'start_trace_ball':  # 持續盯著球
-            self.step_start_trace_ball(1856)
+            self.step_start_trace_ball(1800)
 
         elif self.step_now == "walk_ball_left":  #開球是往左平移
-            self.step_walk_ball_left(180)
+            self.step_walk_ball_left(175)
             if motor.step_jump:
                 self.step_now = "trace_ball"
                 motor.step_jump = False
@@ -821,23 +844,32 @@ class StepState():
         elif self.step_now == "kick.imu_reset":
             self.step_imu_reset_obs()
             if motor.step_jump:
-                self.step_now = "kick.xx"
+                self.step_now = "kick.move_to_ball"
                 motor.move_head(2,2700, 880, 880, 50)
                 motor.move_head(1,2048, 880, 880, 50)
+                time.sleep(0.1)
+                motor.MoveContinuous(CORRECT[0], CORRECT[1], CORRECT[2], 500, 500, 1)
+                target.ball_parameter()
                 motor.step_jump = False
             
-        elif self.step_now == "kick.xx":
+        elif self.step_now == "kick.move_to_ball":
             self.step_walk_ball_right(150)
-            time.sleep(0.5)
-            rospy.loginfo(motor.step_jump)
-            if motor.cnt == 0 :
+            time.sleep(0.02)
+            if motor.step_jump :
                 motor.cnt = 3 
-                time.sleep(0.5)
+                time.sleep(0.02)
+                self.step_now = "kick.goahead_to_ball"
+                motor.step_jump = False
+
+        elif self.step_now == "kick.goahead_to_ball":
+            self.step_score_ahead(2840)
+            if motor.step_jump :
                 motor.bodyauto_close(0)
                 time.sleep(1)
-                send.sendBodySector(7933)
-                self.step_now = "kick.search_to_ball"
-                motor.step_jump = False
+                send.sendBodySector(7911)
+                self.step_now = "finish"
+                motor.step_jump = False 
+            
                 
         
         # elif step.step_now == 'kick.search_to_ball':
