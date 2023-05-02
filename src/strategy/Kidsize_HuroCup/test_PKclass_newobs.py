@@ -10,6 +10,7 @@ import rospy
 from Python_API import Sendmessage
 send = Sendmessage()
 
+DIRECTION = "right" 
 CORRECT = [-1300, -400, 0]    
 LEVEL_LEFT_CORRECT = [-1500, 3000, 1] 
 LEVEL_RIGHT_CORRECT = [-1300, -3000, 0] 
@@ -114,23 +115,43 @@ class TargetLocation():
     def one_obs_parameter(self):                                                            #當只有一個障礙物時
         self.color_mask_subject_blue_first = send.color_mask_subject_cnts[2]
         for j in range(self.color_mask_subject_blue_first):
-            if send.color_mask_subject_XMin[2][j] > 50 and send.color_mask_subject_XMax[2][j] < 300:
-                if send.color_mask_subject_size[2][j] > 600 and send.color_mask_subject_XMin[2][j] <250:
-                    self.obs_x_list.append(send.color_mask_subject_X[2][j])
-                    self.obs_y_list.append(send.color_mask_subject_Y[2][j])
-                    self.obs_size_list.append(send.color_mask_subject_size[2][j])
-                    self.obs_x_min_list.append(send.color_mask_subject_XMin[2][j])
-                    self.obs_y_min_list.append(send.color_mask_subject_YMin[2][j])
-                    self.obs_x_max_list.append(send.color_mask_subject_XMax[2][j])
-                    self.obs_y_max_list.append(send.color_mask_subject_YMax[2][j])
-                else :
-                    self.obs_x_list.append(0)
-                    self.obs_y_list.append(0)
-                    self.obs_size_list.append(0)
-                    self.obs_x_min_list.append(0)
-                    self.obs_y_min_list.append(0)
-                    self.obs_x_max_list.append(0)
-                    self.obs_y_max_list.append(0)
+            if DIRECTION == "right" :
+                if send.color_mask_subject_XMin[2][j] > 50 and send.color_mask_subject_XMax[2][j] < 300:
+                    if send.color_mask_subject_size[2][j] > 600 and send.color_mask_subject_XMin[2][j] <250:
+                        self.obs_x_list.append(send.color_mask_subject_X[2][j])
+                        self.obs_y_list.append(send.color_mask_subject_Y[2][j])
+                        self.obs_size_list.append(send.color_mask_subject_size[2][j])
+                        self.obs_x_min_list.append(send.color_mask_subject_XMin[2][j])
+                        self.obs_y_min_list.append(send.color_mask_subject_YMin[2][j])
+                        self.obs_x_max_list.append(send.color_mask_subject_XMax[2][j])
+                        self.obs_y_max_list.append(send.color_mask_subject_YMax[2][j])
+                    else :
+                        self.obs_x_list.append(0)
+                        self.obs_y_list.append(0)
+                        self.obs_size_list.append(0)
+                        self.obs_x_min_list.append(0)
+                        self.obs_y_min_list.append(0)
+                        self.obs_x_max_list.append(0)
+                        self.obs_y_max_list.append(0)
+
+            if DIRECTION == "left" :
+                if send.color_mask_subject_XMin[2][j] > 20 and send.color_mask_subject_XMax[2][j] < 270:
+                    if send.color_mask_subject_size[2][j] > 600 and send.color_mask_subject_XMin[2][j] <250:
+                        self.obs_x_list.append(send.color_mask_subject_X[2][j])
+                        self.obs_y_list.append(send.color_mask_subject_Y[2][j])
+                        self.obs_size_list.append(send.color_mask_subject_size[2][j])
+                        self.obs_x_min_list.append(send.color_mask_subject_XMin[2][j])
+                        self.obs_y_min_list.append(send.color_mask_subject_YMin[2][j])
+                        self.obs_x_max_list.append(send.color_mask_subject_XMax[2][j])
+                        self.obs_y_max_list.append(send.color_mask_subject_YMax[2][j])
+                    else :
+                        self.obs_x_list.append(0)
+                        self.obs_y_list.append(0)
+                        self.obs_size_list.append(0)
+                        self.obs_x_min_list.append(0)
+                        self.obs_y_min_list.append(0)
+                        self.obs_x_max_list.append(0)
+                        self.obs_y_max_list.append(0)
 #=======================================================================================================================
 #list 取最大值
         self.obs_x = max(self.obs_x_list)
@@ -564,7 +585,19 @@ class StepState():
                 motor.MoveContinuous(CORRECT[0] - 300, CORRECT[1], CORRECT[2], 500, 500, 1)
                 rospy.loginfo("後退")
                 motor.cnt = 2
-        if motor.cnt == 0:
+        if motor.cnt == 0 and DIRECTION == "left":
+            motor.bodyauto_close(0)
+            time.sleep(4)
+            send.sendBodySector(7934)
+            time.sleep(2)
+            motor.move_head(2, LOOK_BALL, 880, 880, 50)
+            motor.move_head(1, 2048, 880, 880, 50)
+            time.sleep(6)
+            motor.bodyauto_close(1)
+            motor.MoveContinuous(CORRECT[0], CORRECT[1], CORRECT[2], 500, 500, 1) 
+            self.step_now = "imu_reset_obs"
+            motor.cnt = 5
+        elif motor.cnt == 0 and DIRECTION == "right":
             motor.bodyauto_close(0)
             time.sleep(4)
             send.sendBodySector(7770)
@@ -608,20 +641,36 @@ class StepState():
         send.drawImageFunction(10, 0, avoidobs, avoidobs, 0, 320, 255, 0, 255)  # 對球中心線
         target.one_obs_parameter()
         rospy.loginfo("aaaa%d,%d",target.obs_x_max,motor.cnt)
-        if motor.cnt > 0:
-            if target.obs_x_max > avoidobs:
-                rospy.loginfo("go righthshfjgjgjg")  # 右平移
-                motor.MoveContinuous(LEVEL_RIGHT_CORRECT[0], LEVEL_RIGHT_CORRECT[1], LEVEL_RIGHT_CORRECT[2], 500, 500,1)
-                motor.cnt = 3  # 要讓球最小值離開過三次界線才跳出 預防步態不穩
+        if DIRECTION == "right":
+            if motor.cnt > 0:
+                if target.obs_x_max > avoidobs:
+                    rospy.loginfo("go righthshfjgjgjg")  # 右平移
+                    motor.MoveContinuous(LEVEL_RIGHT_CORRECT[0], LEVEL_RIGHT_CORRECT[1], LEVEL_RIGHT_CORRECT[2], 500, 500,1)
+                    motor.cnt = 3  # 要讓球最小值離開過三次界線才跳出 預防步態不穩
+                else:
+                    motor.cnt -= 1
             else:
-                motor.cnt -= 1
-        else:
-            motor.cnt = 2
-            time.sleep(0.2)
-            motor.move_head(1, 1900, 880, 880, 50)
-            motor.move_head(2, 2400, 880, 880, 50)
-            time.sleep(0.2)
-            self.step_now = "kick_search_ball"
+                motor.cnt = 2
+                time.sleep(0.2)
+                motor.move_head(1, 1900, 880, 880, 50)
+                motor.move_head(2, 2400, 880, 880, 50)
+                time.sleep(0.2)
+                self.step_now = "kick_search_ball"
+        elif DIRECTION == "left":
+            if motor.cnt > 0:
+                if target.obs_x_min < avoidobs:
+                    rospy.loginfo("go leftfftftftftftf")  # 右平移
+                    motor.MoveContinuous(LEVEL_LEFT_CORRECT[0], LEVEL_LEFT_CORRECT[1], LEVEL_LEFT_CORRECT[2], 500, 500,1)
+                    motor.cnt = 3  # 要讓球最小值離開過三次界線才跳出 預防步態不穩
+                else:
+                    motor.cnt -= 1
+            else:
+                motor.cnt = 2
+                time.sleep(0.2)
+                motor.move_head(1, 1900, 880, 880, 50)
+                motor.move_head(2, 2400, 880, 880, 50)
+                time.sleep(0.2)
+                self.step_now = "kick_search_ball"
 
     def kick_search_to_ball(self):
         if motor.step_jump:
@@ -771,105 +820,356 @@ class StepState():
         send.drawImageFunction(2, 0, 150, 170, 120, 120, 255, 255, 255)  # 對球中心線
         target.ball_parameter()
         target.line_parameter()
-
+        if DIRECTION == "right":
 #=============================================================================================================  開始
 #---------------open_ball----------------------open_ball-------------------open_ball---------------open_ball--------------open_ball
-        if self.step_now == "begin":
-            self.step_begin()
+            if self.step_now == "begin":
+                self.step_begin()
 
-        elif self.step_now == "test":
-            self.step_test()
+            elif self.step_now == "test":
+                self.step_test()
 
-        elif self.step_now == "search_ball":#小踢完後收尋球確認球的位置
-            # motor.MoveContinuous(CORRECT[0], CORRECT[1], CORRECT[2], 500, 500, 1)  # 原地踏步
-            self.step_search_ball(2448, 1648, 2550, 2250)
-            if motor.step_jump:
-                self.step_now = "start_trace_ball"
-                motor.step_jump = False
+            elif self.step_now == "search_ball":#小踢完後收尋球確認球的位置
+                # motor.MoveContinuous(CORRECT[0], CORRECT[1], CORRECT[2], 500, 500, 1)  # 原地踏步
+                self.step_search_ball(2448, 1648, 2550, 2250)
+                if motor.step_jump:
+                    self.step_now = "start_trace_ball"
+                    motor.step_jump = False
 
-        elif self.step_now == 'start_trace_ball':  # 持續盯著球
-            self.step_start_trace_ball(1800)
+            elif self.step_now == 'start_trace_ball':  # 持續盯著球
+                self.step_start_trace_ball(1800)
 
-        elif self.step_now == "walk_ball_left":  #開球是往左平移
-            self.step_walk_ball_left(175)
-            if motor.step_jump:
-                self.step_now = "trace_ball"
-                motor.step_jump = False
-                motor.cnt = 3
+            elif self.step_now == "walk_ball_left":  #開球是往左平移
+                self.step_walk_ball_left(175)
+                if motor.step_jump:
+                    self.step_now = "trace_ball"
+                    motor.step_jump = False
+                    motor.cnt = 3
 
-        elif self.step_now == "walk_ball_right":  #開球是往左平移
-            self.step_walk_ball_right(200)
-            if motor.step_jump:
-                self.step_now = "trace_ball"
-                motor.step_jump = False
-                motor.cnt = 3
+            elif self.step_now == "walk_ball_right":  #開球是往左平移
+                self.step_walk_ball_right(200)
+                if motor.step_jump:
+                    self.step_now = "trace_ball"
+                    motor.step_jump = False
+                    motor.cnt = 3
 
-        elif self.step_now == 'trace_ball':
-            self.step_kick_trace_ball()
+            elif self.step_now == 'trace_ball':
+                self.step_kick_trace_ball()
 
-        elif self.step_now == "imu_reset_obs":
-            self.step_imu_reset_obs()
-            if motor.step_jump == True:
-                self.step_now = "avoid_obs"
-                time.sleep(2)
-                motor.step_jump = False
+            elif self.step_now == "imu_reset_obs":
+                self.step_imu_reset_obs()
+                if motor.step_jump == True:
+                    self.step_now = "avoid_obs"
+                    time.sleep(2)
+                    motor.step_jump = False
 
-        elif self.step_now == "avoid_obs":
-            self.step_avoid_obs(150)
+            elif self.step_now == "avoid_obs":
+                self.step_avoid_obs(150)
 
-        elif self.step_now == "kick_search_ball":#小踢完後收尋球確認球的位置
-            self.step_search_ball(2548, 1548, 2750, 2550)
-            if motor.step_jump:
-                self.step_now = "walk_to_ball"
-                motor.step_jump = False
-            
-        elif self.step_now == 'obs.walk_to_ball':
-            self.walk_to_ball()
+            elif self.step_now == "kick_search_ball":#小踢完後收尋球確認球的位置
+                self.step_search_ball(2548, 1548, 2750, 2550)
+                if motor.step_jump:
+                    self.step_now = "walk_to_ball"
+                    motor.step_jump = False
                 
-        elif self.step_now == 'obs.obs_check':
-            self.obs_check()
-            
-        elif self.step_now == "ball.search_to_ball":
-            self.search_to_ball()
-            
-        elif self.step_now == "ball.watch_ball":
-            self.watch_ball()
-            
-        elif self.step_now =="walk_to_ball":
-            self.walk_to_ball()
-            if motor.step_jump:
-                self.step_now = "kick.imu_reset"
-                motor.step_jump = False
+            elif self.step_now == 'obs.walk_to_ball':
+                self.walk_to_ball()
+                    
+            elif self.step_now == 'obs.obs_check':
+                self.obs_check()
+                
+            elif self.step_now == "ball.search_to_ball":
+                self.search_to_ball()
+                
+            elif self.step_now == "ball.watch_ball":
+                self.watch_ball()
+                
+            elif self.step_now =="walk_to_ball":
+                self.walk_to_ball()
+                if motor.step_jump:
+                    self.step_now = "kick.imu_reset"
+                    motor.step_jump = False
 
-        elif self.step_now == "kick.imu_reset":
-            self.step_imu_reset_obs()
-            if motor.step_jump:
-                self.step_now = "kick.move_to_ball"
-                motor.move_head(2,2700, 880, 880, 50)
-                motor.move_head(1,2048, 880, 880, 50)
-                time.sleep(0.1)
-                motor.MoveContinuous(CORRECT[0], CORRECT[1], CORRECT[2], 500, 500, 1)
-                target.ball_parameter()
-                motor.step_jump = False
-            
-        elif self.step_now == "kick.move_to_ball":
-            self.step_walk_ball_right(150)
-            time.sleep(0.02)
-            if motor.step_jump :
-                motor.cnt = 3 
+            elif self.step_now == "kick.imu_reset":
+                self.step_imu_reset_obs()
+                if motor.step_jump:
+                    self.step_now = "kick.move_to_ball"
+                    motor.move_head(2,2700, 880, 880, 50)
+                    motor.move_head(1,2048, 880, 880, 50)
+                    time.sleep(0.1)
+                    motor.MoveContinuous(CORRECT[0], CORRECT[1], CORRECT[2], 500, 500, 1)
+                    target.ball_parameter()
+                    motor.step_jump = False
+
+            elif self.step_now == "test":
+                self.step_test()
+
+            elif self.step_now == "search_ball":#小踢完後收尋球確認球的位置
+                # motor.MoveContinuous(CORRECT[0], CORRECT[1], CORRECT[2], 500, 500, 1)  # 原地踏步
+                self.step_search_ball(2448, 1648, 2550, 2250)
+                if motor.step_jump:
+                    self.step_now = "start_trace_ball"
+                    motor.step_jump = False
+
+            elif self.step_now == 'start_trace_ball':  # 持續盯著球
+                self.step_start_trace_ball(1800)
+
+            elif self.step_now == "walk_ball_left":  #開球是往左平移
+                self.step_walk_ball_left(180)
+                if motor.step_jump:
+                    self.step_now = "trace_ball"
+                    motor.step_jump = False
+                    motor.cnt = 3
+
+            elif self.step_now == "walk_ball_right":  #開球是往左平移
+                self.step_walk_ball_right(200)
+                if motor.step_jump:
+                    self.step_now = "trace_ball"
+                    motor.step_jump = False
+                    motor.cnt = 3
+
+            elif self.step_now == 'trace_ball':
+                self.step_kick_trace_ball()
+
+            elif self.step_now == "imu_reset_obs":
+                self.step_imu_reset_obs()
+                if motor.step_jump == True:
+                    self.step_now = "avoid_obs"
+                    time.sleep(2)
+                    motor.step_jump = False
+
+            elif self.step_now == "avoid_obs":
+                self.step_avoid_obs(150)
+
+            elif self.step_now == "kick_search_ball":#小踢完後收尋球確認球的位置
+                self.step_search_ball(2548, 1548, 2750, 2550)
+                if motor.step_jump:
+                    self.step_now = "walk_to_ball"
+                    motor.step_jump = False
+                
+            elif self.step_now == 'obs.walk_to_ball':
+                self.walk_to_ball()
+                    
+            elif self.step_now == 'obs.obs_check':
+                self.obs_check()
+                
+            elif self.step_now == "ball.search_to_ball":
+                self.search_to_ball()
+                
+            elif self.step_now == "ball.watch_ball":
+                self.watch_ball()
+                
+            elif self.step_now =="walk_to_ball":
+                self.walk_to_ball()
+                if motor.step_jump:
+                    self.step_now = "kick.imu_reset"
+                    motor.step_jump = False
+
+            elif self.step_now == "kick.imu_reset":
+                self.step_imu_reset_obs()
+                if motor.step_jump:
+                    self.step_now = "kick.move_to_ball"
+                    motor.move_head(2,2700, 880, 880, 50)
+                    motor.move_head(1,2048, 880, 880, 50)
+                    time.sleep(0.1)
+                    motor.MoveContinuous(CORRECT[0], CORRECT[1], CORRECT[2], 500, 500, 1)
+                    target.ball_parameter()
+                    motor.step_jump = False
+                
+            elif self.step_now == "kick.move_to_ball":
+                self.step_walk_ball_right(170)
                 time.sleep(0.02)
-                self.step_now = "kick.goahead_to_ball"
-                motor.step_jump = False
+                if motor.step_jump :
+                    motor.cnt = 3 
+                    time.sleep(0.02)
+                    self.step_now = "kick.goahead_to_ball"
+                    motor.step_jump = False
 
-        elif self.step_now == "kick.goahead_to_ball":
-            self.step_score_ahead(2840)
-            if motor.step_jump :
-                motor.bodyauto_close(0)
-                time.sleep(1)
-                send.sendBodySector(7911)
-                self.step_now = "finish"
-                motor.step_jump = False 
+            elif self.step_now == "kick.goahead_to_ball":
+                self.step_score_ahead(2840)
+                if motor.step_jump :
+                    motor.bodyauto_close(0)
+                    time.sleep(1)
+                    send.sendBodySector(7911)
+                    self.step_now = "finish"
+                    motor.step_jump = False
+
+
+        elif DIRECTION == "left":
+#=============================================================================================================  開始
+#---------------open_ball----------------------open_ball-------------------open_ball---------------open_ball--------------open_ball
+            if self.step_now == "begin":
+                self.step_begin()
+                rospy.loginfo(f"{DIRECTION}")
+
+            elif self.step_now == "test":
+                self.step_test()
+
+            elif self.step_now == "search_ball":#小踢完後收尋球確認球的位置
+                # motor.MoveContinuous(CORRECT[0], CORRECT[1], CORRECT[2], 500, 500, 1)  # 原地踏步
+                self.step_search_ball(2448, 1648, 2550, 2250)
+                if motor.step_jump:
+                    self.step_now = "start_trace_ball"
+                    motor.step_jump = False
+
+            elif self.step_now == 'start_trace_ball':  # 持續盯著球
+                self.step_start_trace_ball(2248)
+
+            elif self.step_now == "walk_ball_left":  #開球是往左平移
+                self.step_walk_ball_left(55)
+                if motor.step_jump:
+                    self.step_now = "trace_ball"
+                    motor.step_jump = False
+                    motor.cnt = 3
+
+            elif self.step_now == "walk_ball_right":  #開球是往左平移
+                self.step_walk_ball_right(80)
+                if motor.step_jump:
+                    self.step_now = "trace_ball"
+                    motor.step_jump = False
+                    motor.cnt = 3
+
+            elif self.step_now == 'trace_ball':
+                self.step_kick_trace_ball()
+
+            elif self.step_now == "imu_reset_obs":
+                self.step_imu_reset_obs()
+                if motor.step_jump == True:
+                    self.step_now = "avoid_obs"
+                    time.sleep(2)
+                    motor.step_jump = False
+
+            elif self.step_now == "avoid_obs":
+                self.step_avoid_obs(170)
+
+            elif self.step_now == "kick_search_ball":#小踢完後收尋球確認球的位置
+                self.step_search_ball(2548, 1548, 2750, 2550)
+                if motor.step_jump:
+                    self.step_now = "walk_to_ball"
+                    motor.step_jump = False
+                
+            elif self.step_now == 'obs.walk_to_ball':
+                self.walk_to_ball()
+                    
+            elif self.step_now == 'obs.obs_check':
+                self.obs_check()
+                
+            elif self.step_now == "ball.search_to_ball":
+                self.search_to_ball()
+                
+            elif self.step_now == "ball.watch_ball":
+                self.watch_ball()
+                
+            elif self.step_now =="walk_to_ball":
+                self.walk_to_ball()
+                if motor.step_jump:
+                    self.step_now = "kick.imu_reset"
+                    motor.step_jump = False
+
+            elif self.step_now == "kick.imu_reset":
+                self.step_imu_reset_obs()
+                if motor.step_jump:
+                    self.step_now = "kick.move_to_ball"
+                    motor.move_head(2,2700, 880, 880, 50)
+                    motor.move_head(1,2048, 880, 880, 50)
+                    time.sleep(0.1)
+                    motor.MoveContinuous(CORRECT[0], CORRECT[1], CORRECT[2], 500, 500, 1)
+                    target.ball_parameter()
+                    motor.step_jump = False
+
+            elif self.step_now == "test":
+                self.step_test()
+
+            elif self.step_now == "search_ball":#小踢完後收尋球確認球的位置
+                # motor.MoveContinuous(CORRECT[0], CORRECT[1], CORRECT[2], 500, 500, 1)  # 原地踏步
+                self.step_search_ball(2448, 1648, 2550, 2250)
+                if motor.step_jump:
+                    self.step_now = "start_trace_ball"
+                    motor.step_jump = False
+
+            elif self.step_now == 'start_trace_ball':  # 持續盯著球
+                self.step_start_trace_ball(1800)
+
+            elif self.step_now == "walk_ball_left":  #開球是往左平移
+                self.step_walk_ball_left(175)
+                if motor.step_jump:
+                    self.step_now = "trace_ball"
+                    motor.step_jump = False
+                    motor.cnt = 3
+
+            elif self.step_now == "walk_ball_right":  #開球是往左平移
+                self.step_walk_ball_right(200)
+                if motor.step_jump:
+                    self.step_now = "trace_ball"
+                    motor.step_jump = False
+                    motor.cnt = 3
+
+            elif self.step_now == 'trace_ball':
+                self.step_kick_trace_ball()
+
+            elif self.step_now == "imu_reset_obs":
+                self.step_imu_reset_obs()
+                if motor.step_jump == True:
+                    self.step_now = "avoid_obs"
+                    time.sleep(2)
+                    motor.step_jump = False
+
+            elif self.step_now == "avoid_obs":
+                self.step_avoid_obs(150)
+
+            elif self.step_now == "kick_search_ball":#小踢完後收尋球確認球的位置
+                self.step_search_ball(2548, 1548, 2750, 2550)
+                if motor.step_jump:
+                    self.step_now = "walk_to_ball"
+                    motor.step_jump = False
+                
+            elif self.step_now == 'obs.walk_to_ball':
+                self.walk_to_ball()
+                    
+            elif self.step_now == 'obs.obs_check':
+                self.obs_check()
+                
+            elif self.step_now == "ball.search_to_ball":
+                self.search_to_ball()
+                
+            elif self.step_now == "ball.watch_ball":
+                self.watch_ball()
+                
+            elif self.step_now =="walk_to_ball":
+                self.walk_to_ball()
+                if motor.step_jump:
+                    self.step_now = "kick.imu_reset"
+                    motor.step_jump = False
+
+            elif self.step_now == "kick.imu_reset":
+                self.step_imu_reset_obs()
+                if motor.step_jump:
+                    self.step_now = "kick.move_to_ball"
+                    motor.move_head(2,2700, 880, 880, 50)
+                    motor.move_head(1,2048, 880, 880, 50)
+                    time.sleep(0.1)
+                    motor.MoveContinuous(CORRECT[0], CORRECT[1], CORRECT[2], 500, 500, 1)
+                    target.ball_parameter()
+                    motor.step_jump = False
+                
             
+            elif self.step_now == "kick.move_to_ball":
+                self.step_walk_ball_left(90)
+                time.sleep(0.02)
+                if motor.step_jump :
+                    motor.cnt = 3 
+                    time.sleep(0.02)
+                    self.step_now = "kick.goahead_to_ball"
+                    motor.step_jump = False
+
+            elif self.step_now == "kick.goahead_to_ball":
+                self.step_score_ahead(2840)
+                if motor.step_jump :
+                    motor.bodyauto_close(0)
+                    time.sleep(1)
+                    send.sendBodySector(7933)
+                    self.step_now = "finish"
+                    motor.step_jump = False 
                 
         
         # elif step.step_now == 'kick.search_to_ball':
@@ -889,8 +1189,9 @@ if __name__ == '__main__':
         motor = MotorMove()
         step = StepState()
         while not rospy.is_shutdown():
-            if send.is_start:
+            if send.is_start :
                 step.main()
+                
 
             else:
                 step.init()
