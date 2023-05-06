@@ -10,9 +10,9 @@ import rospy
 from Python_API import Sendmessage
 send = Sendmessage()
 
-DIRECTION = "right" 
+DIRECTION = "left" 
 CORRECT = [-1300, -400, 0]    
-LEVEL_LEFT_CORRECT = [-1500, 3000, 1] 
+LEVEL_LEFT_CORRECT = [-1500, 2800, 1] 
 LEVEL_RIGHT_CORRECT = [-1300, -3000, 0] 
 LEFT_CORRECT = [-1500, -400, 3] 
 RIGHT_CORRECT = [-1500, -400, -3] 
@@ -111,10 +111,9 @@ class TargetLocation():
         self.obs_y_min_list = [0]
         self.obs_x_max_list = [0]
         self.obs_y_max_list = [0]
-        
-    def one_obs_parameter(self):                                                            #當只有一個障礙物時
-        self.color_mask_subject_blue_first = send.color_mask_subject_cnts[2]
-        for j in range(self.color_mask_subject_blue_first):
+    def one_obs_parameter(self):  
+        self.color_mask_subject_blue = send.color_mask_subject_cnts[2]
+        for j in range(self.color_mask_subject_blue_second):
             if DIRECTION == "right" :
                 if send.color_mask_subject_XMin[2][j] > 50 and send.color_mask_subject_XMax[2][j] < 300:
                     if send.color_mask_subject_size[2][j] > 600 and send.color_mask_subject_XMin[2][j] <250:
@@ -831,7 +830,7 @@ class StepState():
 
             elif self.step_now == "search_ball":#小踢完後收尋球確認球的位置
                 # motor.MoveContinuous(CORRECT[0], CORRECT[1], CORRECT[2], 500, 500, 1)  # 原地踏步
-                self.step_search_ball(2448, 1648, 2550, 2250)
+                self.step_search_ball(2248, 148, 2550, 2450)
                 if motor.step_jump:
                     self.step_now = "start_trace_ball"
                     motor.step_jump = False
