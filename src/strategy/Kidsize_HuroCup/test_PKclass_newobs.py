@@ -11,16 +11,16 @@ from Python_API import Sendmessage
 send = Sendmessage()
 
 DIRECTION = "right" 
-CORRECT = [-1300, -400, 0]    
-LEVEL_LEFT_CORRECT = [-1500, 2500, 1] 
-LEVEL_RIGHT_CORRECT = [-1300, -2500, -1] 
-LEFT_CORRECT = [-1500, -400, 3] 
-RIGHT_CORRECT = [-1500, -400, -3] 
+CORRECT = [-900, 0, 0]    
+LEVEL_LEFT_CORRECT = [-1100, 2500,0]
+LEVEL_RIGHT_CORRECT = [-1100, -2500,0] 
+LEFT_CORRECT = [-1100, 0, 3] 
+RIGHT_CORRECT = [-900, 0, -3] 
 
 LOOK_BALL = 2600  #預先讓頭轉至大概角度
 SLOWDOWN = [0,0]
 ROTATE_MISTAKE = 50  # x , y , theta
-KICK_DEGREE , KICK_ERROR = 2860, 20# 第一次小踢
+KICK_DEGREE , KICK_ERROR = 2840, 20# 第一次小踢
 KICK_DEGREE2 , KICK_ERROR2 = 2710, 20 #直接射門
 KICK_DEGREE_MISTAKE = 50
 
@@ -487,8 +487,8 @@ class StepState():
         self.step_now = "begin"
 
     def step_begin(self):
-        motor.move_head(2, 2348, 880, 880, 50)
-        send.sendSensorReset()
+        motor.move_head(2, 2448, 880, 880, 50)
+        send.sendSensorReset(1,1,1)
         time.sleep(0.5)
         self.step_now = "test"
 
@@ -589,8 +589,10 @@ class StepState():
         if motor.cnt == 0 and DIRECTION == "left":
             motor.bodyauto_close(0)
             time.sleep(4)
-            send.sendBodySector(7934)
-            time.sleep(2)
+            send.sendBodySector(7911)   #7934
+            rospy.loginfo("7911")
+            time.sleep(4)
+            send.sendBodySector(29)
             motor.move_head(2, LOOK_BALL, 880, 880, 50)
             motor.move_head(1, 2048, 880, 880, 50)
             time.sleep(6)
@@ -865,7 +867,7 @@ class StepState():
                     motor.step_jump = False
 
             elif self.step_now == "avoid_obs":
-                self.step_avoid_obs(150)
+                self.step_avoid_obs(200)
 
             elif self.step_now == "kick_search_ball":#小踢完後收尋球確認球的位置
                 self.step_search_ball(2548, 1548, 2750, 2550)
@@ -994,7 +996,7 @@ class StepState():
                 self.step_score_ahead(2840)
                 if motor.step_jump :
                     motor.bodyauto_close(0)
-                    time.sleep(1)
+                    time.sleep(1.3)
                     send.sendBodySector(7911)
                     self.step_now = "finish"
                     motor.step_jump = False
