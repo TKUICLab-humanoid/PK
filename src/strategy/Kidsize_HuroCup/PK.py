@@ -272,10 +272,10 @@ class PenaltyKick():
 
         elif self.state == 'start_trace_ball':  
         ## 持續盯著球
-            self.step_start_trace_ball(1800)
+            self.step_start_trace_ball()
 
-        elif self.state == "walk_ball_right":
-            self.step_walk_ball(190,self.direction) #big left
+        elif self.state == "walk_ball":
+            self.step_walk_ball(190,self.direction)
             if motor.step_jump:
                 self.state = "trace_ball"
                 motor.step_jump = False
@@ -302,13 +302,13 @@ class PenaltyKick():
         elif self.state == "kick.imu_reset":
             self.step_imu_reset_obs()
             if motor.step_jump:
-                motor.move_head(2,2600, 880, 880, 50)
+                motor.move_head(2,1800, 880, 880, 50)
                 motor.move_head(1,2048, 880, 880, 50)
+                ##這裡要再更改##
                 if (target.ball_x <= 240):
                     self.direction = "left"
                 else :
                     self.direction = "right"
-                print("asdgj",target.ball_x,self.direction)
                 rospy.loginfo(f"way to score{target.ball_x},{self.direction}")
                 motor.MoveContinuous(CORRECT[0], CORRECT[1], CORRECT[2], 500, 500, 1)
                 time.sleep(1)
@@ -339,7 +339,7 @@ class PenaltyKick():
                 motor.step_jump = False
 
     def step_search_ball(self,right,left,up,down):
-        
+    #找球
         if self.ball.target_size < 800:  # 500要測
             motor.view_move(right, left, up, down, 70, 0.05)
             time.sleep(0.05)
@@ -348,49 +348,36 @@ class PenaltyKick():
             time.sleep(0.1)
             motor.step_jump = True
 
-    def step_start_trace_ball(self,left_or_right):
-        
+    def step_start_trace_ball(self):
+    #找到球,持續讓球維持在螢幕正中心
         if abs(self.ball.center.x - 160) > 8 or abs(self.ball.center.y - 120) > 6:
             
             motor.trace_revise(self.ball.center.x, self.ball.center.y, 50)
             time.sleep(0.05)
         else:
             rospy.loginfo(f"motor.head_horizon{motor.head_horizon}")
-            if motor.head_horizon >= left_or_right:
-                time.sleep(0.05)
-                motor.move_head(1, 2048, 880, 880, 50)
-                motor.move_head(2, 2770, 880, 880, 50)
-                time.sleep(0.05)
-                motor.bodyauto_close(1)
-                motor.MoveContinuous(CORRECT[0], CORRECT[1], CORRECT[2], 500, 500, 1)  # 原地踏步
-                time.sleep(2)
-                rospy.loginfo("find left left left")
-                self.state  = "walk_ball_left"
-            else:
-                time.sleep(0.05)
-                motor.move_head(1, 2048, 880, 880, 50)
-                motor.move_head(2, 2770, 880, 880, 50)
-                time.sleep(0.05)
-                motor.bodyauto_close(1)
-                motor.MoveContinuous(CORRECT[0], CORRECT[1], CORRECT[2], 500, 500, 1)  # 原地踏步
-                time.sleep(2)
-                
-                rospy.loginfo("find right right right")
-                self.state = "walk_ball_right"
+            time.sleep(0.05)
+            motor.move_head(1, 2048, 880, 880, 50)
+            motor.move_head(2, 2770, 880, 880, 50)
+            time.sleep(0.05)
+            motor.bodyauto_close(1)
+            motor.MoveContinuous(CORRECT[0], CORRECT[1], CORRECT[2], 500, 500, 1)  # 原地踏步
+            time.sleep(2)
+            rospy.loginfo("find left left left")
+            self.state  = "walk_ball"
 
     def step_walk_ball(self,bound,direction):
+    #根據一開始的方向決定往球的左或右邊走
         send.drawImageFunction(8, 0, bound, bound, 0, 320, 255, 255, 255)  # 對球中心線
-        
         if abs(send.imu_value_Yaw) > 5:
-            motor.imu_yaw_reset(0, 5)
+            self.imu_reset(0, 5)
             rospy.loginfo("reset ")
             motor.cnt = 3
         elif motor.cnt > 0:
             if direction == 'left':
                 if self.ball.center.x_min < bound:
                     rospy.loginfo("go left")
-                    motor.MoveContinuous(LEVEL_LEFT_CORRECT[0] - SLOWDOWN[0], LEVEL_LEFT_CORRECT[1] - SLOWDOWN[1],
-                                        LEVEL_LEFT_CORRECT[2], 500, 500, 1)
+                    motor.MoveContinuous(LEVEL_LEFT_CORRECT[0] - SLOWDOWN[0], LEVEL_LEFT_CORRECT[1] - SLOWDOWN[1],LEVEL_LEFT_CORRECT[2], 500, 500, 1)
                     motor.cnt= 3  # 要讓球最小值離開過三次界線才跳出 預防步態不穩
                 else:
                     motor.cnt -= 1
@@ -404,17 +391,16 @@ class PenaltyKick():
         else:
             motor.cnt = 2
             time.sleep(0.2)
-            
             motor.step_jump = True
 
     def step_kick_trace_ball(self):
-        
+    #走到球旁邊,到一定距離後踢球
         motor.trace_revise(self.ball.center.x, self.ball.center.y, 50)  # 追蹤球
         if abs(motor.head_vertical - KICK_DEGREE) <= KICK_ERROR and abs(send.imu_value_Yaw) <= 5:  # 跟球距離洽當就踢   20 要再側
             rospy.loginfo("small kick 1")  # 小踢
             motor.cnt = motor.cnt - 1
         elif abs(send.imu_value_Yaw) > 5:
-            motor.imu_yaw_reset(0, 5)
+            self.imu_reset(0, 5)
             rospy.loginfo("reset ")
             motor.cnt = 2
         elif abs(motor.head_vertical - KICK_DEGREE) > KICK_ERROR :  # 如果太遠
@@ -447,14 +433,14 @@ class PenaltyKick():
             motor.cnt = 5
 
     def step_score_ahead(self,score_vertical):
-        
+    #修正完機器人的角度,直走到球旁
         rospy.loginfo(f"ver{motor.head_vertical}")  # 小踢
         motor.trace_revise(self.ball.center.x, self.ball.center.y, 50)  # 追蹤球
         if abs(motor.head_vertical - score_vertical) <= 30:  # 跟球距離洽當就踢   20 要再側
             rospy.loginfo("small kick 2")  # 小踢
             motor.cnt = motor.cnt - 1
         elif abs(send.imu_value_Yaw) > 5:
-            motor.imu_yaw_reset(0, 5)
+            self.imu_reset(0, 5)
             rospy.loginfo("reset ")
             motor.cnt = 1
         elif abs(motor.head_vertical - score_vertical) > 30:  # 如果太遠
@@ -470,12 +456,13 @@ class PenaltyKick():
             motor.step_jump = True
 
     def step_avoid_obs(self,avoidobs):
+    #踢完球,先平移避開障礙物
         send.drawImageFunction(10, 0, avoidobs, avoidobs, 0, 320, 255, 0, 255)  # 對球中心線
         target.one_obs_parameter()
         rospy.loginfo("aaaa%d,%d",target.obs_x_max,motor.cnt)
         if self.direction == "right":
             if abs(send.imu_value_Yaw) > 5 :
-                motor.imu_yaw_reset(0,5)
+                self.imu_reset(0,5)
                 motor.cnt = 2
             elif motor.cnt > 0:
                 if target.obs_x_max > avoidobs:
@@ -493,7 +480,7 @@ class PenaltyKick():
                 self.state = "kick_search_ball"
         elif self.direction == "left":
             if abs(send.imu_value_Yaw) > 5 :
-                motor.imu_yaw_reset(0,5)
+                self.imu_reset(0,5)
                 motor.cnt = 2
             elif motor.cnt > 0:
                 if target.obs_x_min < avoidobs:
@@ -510,16 +497,8 @@ class PenaltyKick():
                 time.sleep(0.2)
                 self.state = "kick_search_ball"
 
-    def watch_ball(self):
-        if abs(self.ball.center.x - 160) > 8 or abs(self.ball.center.y - 120) > 6:
-            
-            motor.trace_revise(self.ball.center.x, self.ball.center.y, 25)
-            time.sleep(0.05)
-        else:
-            motor.bodyauto_close(1)
-            self.state = 'ball.walk_to_ball'
-
     def walk_to_ball(self):
+    #踢完球,走到球旁
         motor.trace_revise(self.ball.center.x, self.ball.center.y, 25)
         if abs(motor.head_horizon - 2048) > ROTATE_MISTAKE:
             
@@ -528,7 +507,8 @@ class PenaltyKick():
             
             motor.body_trace_straight(KICK_DEGREE2 ,KICK_ERROR2)
 
-    def imu_reset(self, fix, error_imu):         #讓身體imu回正，面向(回正)一開始方向
+    def imu_reset(self, fix, error_imu):         
+    #讓身體imu回正，面向(回正)一開始方向
         self.yaw_fix = send.imu_value_Yaw - fix  # imu_value_yaw 當前yaw值
         if abs(self.yaw_fix) > error_imu:        # fix要修去的值 , error_imu 容忍範圍的誤差
             if self.yaw_fix > 0:                 # yaw_fix yaw要修的值           
@@ -550,6 +530,6 @@ if __name__ == '__main__':   # left : SMALL 7933 BIG : 7934
                 
             else:
                 step.init()
-                
+
     except rospy.ROSInterruptException:
         pass
