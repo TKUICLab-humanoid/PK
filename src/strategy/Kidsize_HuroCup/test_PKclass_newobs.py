@@ -649,7 +649,6 @@ class StepState():
     def step_imu_reset_obs(self):
         motor.imu_yaw_reset(0, 5)
         
-
     def step_avoid_obs(self,avoidobs):
         send.drawImageFunction(10, 0, avoidobs, avoidobs, 0, 320, 255, 0, 255)  # 對球中心線
         target.one_obs_parameter()
