@@ -16,6 +16,13 @@ LEVEL_RIGHT_CORRECT = [-1100, -2500,0]
 LEFT_CORRECT = [-1300, 0, 3] 
 RIGHT_CORRECT = [-1100, 0, -3] 
 
+  #預先讓頭轉至大概角度
+SLOWDOWN = [0,0]
+ROTATE_MISTAKE = 50  # x , y , theta
+KICK_DEGREE , KICK_ERROR = 2840, 20# 第一次小踢   # left 2840 right 2830
+KICK_DEGREE2 , KICK_ERROR2 = 2690, 20 #直接射門
+KICK_DEGREE_MISTAKE = 50
+
 LOOK_BALL = 1488
 
 class Coordinate:
@@ -44,7 +51,7 @@ class ObjectInfo:
         self.target_size      = 0
 
         update_strategy = { 'OBS_blue': self.get_object,
-                            'OBS'     : self.get_object,
+                            'Line'    : self.get_line_object,
                             'Ball'    : self.get_ball_object}
         self.find_object = update_strategy[object_type]
 
@@ -52,6 +59,11 @@ class ObjectInfo:
         max_object_size = max(send.color_mask_subject_size[self.color])
         max_object_idx = send.color_mask_subject_size[self.color].index(max_object_size)
         return max_object_idx if max_object_size > 10000 else None
+
+    def get_line_object(self):
+        max_object_size = max(send.color_mask_subject_size[self.color])
+        max_object_idx = send.color_mask_subject_size[self.color].index(max_object_size)
+        return max_object_idx if max_object_size > 2000 else None
 
     def get_ball_object(self):
         object_idx = None
@@ -244,9 +256,9 @@ class PenaltyKick():
     def __init__(self):
         self.pre_state = 'None'
         self.init()
-        motor = MotorMove()
-        self.ball = ObjectInfo( 0,'BALL') # 0 為橘色
-
+        self.ball = ObjectInfo( 0,'Ball')     # 0 為橘色
+        self.obs  = ObjectInfo( 2,'OBS_blue') # 2 為橘色
+        self.line = ObjectInfo( 6,'Line')     # 6 為白色
     def init(self):
         self.state = 'search_ball'
         send.sendHeadMotor(1, 2048, 30)  # reset head
@@ -256,14 +268,14 @@ class PenaltyKick():
             send.sendBodySector(29)  # reset body
             self.pre_state = 'None'
         send.sendSensorReset(1,1,1)
-        if send.DIOValue == 17 or send.DIOValue == 25
+        if send.DIOValue == 17 or send.DIOValue == 25:
             self.direction = 'right'
         else:
             self.direction = 'left'
     
     def main(self):
 
-        if self.state = 'search_ball':
+        if self.state == 'search_ball':
         ##找球
             self.step_search_ball(2248, 1848, 2048, 1800)
             if motor.step_jump:
@@ -305,11 +317,11 @@ class PenaltyKick():
                 motor.move_head(2,1800, 880, 880, 50)
                 motor.move_head(1,2048, 880, 880, 50)
                 ##這裡要再更改##
-                if (target.ball_x <= 240):
+                if (self.ball.edge_max.x <= 240):
                     self.direction = "left"
                 else :
                     self.direction = "right"
-                rospy.loginfo(f"way to score{target.ball_x},{self.direction}")
+                rospy.loginfo(f"way to score{self.ball.edge_max.x},{self.direction}")
                 motor.MoveContinuous(CORRECT[0], CORRECT[1], CORRECT[2], 500, 500, 1)
                 time.sleep(1)
                 self.state = "kick.move_to_ball"
@@ -415,10 +427,10 @@ class PenaltyKick():
         if motor.cnt == 0:
             motor.bodyauto_close(0)
             time.sleep(4)
-            if self.direction == 'left'
+            if self.direction == 'left':
                 send.sendBodySector(7933)   #7934
                 rospy.loginfo("右踢")
-            elif self.direction == 'right'
+            elif self.direction == 'right':
                 send.sendBodySector(7911)
                 rospy.loginfo("左踢")
             time.sleep(4)
@@ -458,14 +470,13 @@ class PenaltyKick():
     def step_avoid_obs(self,avoidobs):
     #踢完球,先平移避開障礙物
         send.drawImageFunction(10, 0, avoidobs, avoidobs, 0, 320, 255, 0, 255)  # 對球中心線
-        target.one_obs_parameter()
-        rospy.loginfo("aaaa%d,%d",target.obs_x_max,motor.cnt)
+        rospy.loginfo("aaaa%d,%d",self.obs.edge_max.x,motor.cnt)
         if self.direction == "right":
             if abs(send.imu_value_Yaw) > 5 :
                 self.imu_reset(0,5)
                 motor.cnt = 2
             elif motor.cnt > 0:
-                if target.obs_x_max > avoidobs:
+                if self.obs.edge_max.x > avoidobs:
                     rospy.loginfo("go righthshfjgjgjg")  # 右平移
                     motor.MoveContinuous(LEVEL_RIGHT_CORRECT[0], LEVEL_RIGHT_CORRECT[1], LEVEL_RIGHT_CORRECT[2], 500, 500,1)
                     motor.cnt = 3  # 要讓球最小值離開過三次界線才跳出 預防步態不穩
@@ -483,7 +494,7 @@ class PenaltyKick():
                 self.imu_reset(0,5)
                 motor.cnt = 2
             elif motor.cnt > 0:
-                if target.obs_x_min < avoidobs:
+                if self.obs.edge_min.x < avoidobs:
                     rospy.loginfo("go leftfftftftftftf")  # 左平移
                     motor.MoveContinuous(LEVEL_LEFT_CORRECT[0], LEVEL_LEFT_CORRECT[1], LEVEL_LEFT_CORRECT[2], 500, 500,1)
                     motor.cnt = 3  # 要讓球最小值離開過三次界線才跳出 預防步態不穩
@@ -523,13 +534,14 @@ if __name__ == '__main__':   # left : SMALL 7933 BIG : 7934
                              #RIGHT : small 7770 big :7911
     # i, x = 0, 0
     try:
-        step = StepState()
+        PK = PenaltyKick()
+        motor = MotorMove()
         while not rospy.is_shutdown():
             if send.is_start :
-                step.main()
+                PK.main()
                 
             else:
-                step.init()
+                PK.init()
 
     except rospy.ROSInterruptException:
         pass
