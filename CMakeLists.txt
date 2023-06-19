@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(strategy)
+project(pk)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 add_compile_options(-std=c++11)
@@ -26,10 +26,10 @@ set(ROSCOMMUNICATION_LIBRARIES ${CATKIN_DEVEL_PREFIX}/lib/libroscommunication.so
 # find_package(Boost REQUIRED COMPONENTS system)
 
 ## Generate messages in the 'msg' folder
-add_message_files(DIRECTORY msg
-	FILES
-	GetParameter.msg
-)
+#add_message_files(DIRECTORY msg
+#	FILES
+#	GetParameter.msg
+#)
 ## Generate services in the 'srv' folder
 #add_service_files(DIRECTORY srv 
 #	FILES
