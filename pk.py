@@ -19,7 +19,9 @@ TRANSLATION                = [1500, 1000,    0, -1000, -1500]
 #                            [大左旋,左旋, 原地,   右旋,大右旋]
 THETA                      = [   7,    3,    0,    -3,    -7]
 #
-KICK_DEGREE , KICK_ERROR = 1250, 20
+KICK_DEGREE , KICK_ERROR   = 1275, 20
+SHOT_DEGREE , SHOT_ERROR   = 1375, 20
+ROTATE_ERROR               = 60  
 #
 DRAW_FUNCTION_FLAG         = True                  #影像繪圖開關
 HEAD_HORIZONTAL            = 2048                  #頭水平
@@ -28,6 +30,7 @@ MAX_HEAD_HORIZONTAL        = 3072                  #頭水平最大
 MIN_HEAD_HORIZONTAL        = 1024                  #頭水平最小
 MAX_HEAD_VERTICAL          = 2048                  #頭垂直最大
 MIN_HEAD_VERTICAL          = 1024                  #頭垂直最小
+
 class Coordinate:
 #儲存座標
     def __init__(self, x, y):
@@ -73,7 +76,7 @@ class ObjectInfo:
         object_idx = None
         for i in range(self.api.color_mask_subject_cnts[self.color]):
             length_width_diff = abs(abs(self.api.color_mask_subject_XMax[self.color][i] - self.api.color_mask_subject_XMin[self.color][i]) - abs(self.api.color_mask_subject_YMax[self.color][i] - self.api.color_mask_subject_YMin[self.color][i]))
-            if 2000 < self.api.color_mask_subject_size[self.color][i] and length_width_diff < 8:
+            if 500 < self.api.color_mask_subject_size[self.color][i] and length_width_diff < 12:
                 object_idx = i
         
         return object_idx
@@ -119,6 +122,7 @@ class PenaltyKick():
         #重置旗標
         self.state           = 'search_ball'
         self.search          = 'right'
+        self.trace_first     = True
         #重置頭位置
         self.head_horizon    = HEAD_HORIZONTAL
         self.head_vertical   = HEAD_VERTICAL
@@ -251,7 +255,7 @@ class PenaltyKick():
     
     def trace_ball(self, x_target, y_target):
     #追蹤目標物
-        if x_target != 0 and y_target!= 0:
+        if x_target != 0 and y_target != 0:
             self.x_differ = x_target - 160
             self.y_differ = y_target - 120
             #--角度測量--#
@@ -263,17 +267,19 @@ class PenaltyKick():
             self.head_vertical -= round(self.y_degree * 4096 / 360 * 0.15)
             self.control_head(1, self.head_horizon, 100)
             self.control_head(2, self.head_vertical, 100)
+        else:
+            rospy.logwarn(f"看不到球,重新找球")
 
     def body_trace_rotate(self,error):
     #修正機器人和目標的角度
         rotate_error = self.head_horizon - HEAD_HORIZONTAL
         if rotate_error > error:
         #左轉修正
-            self.control_walkinggait(FORWARD[2], TRANSLATION[2], THETA[1], 500, 500,1)
+            self.control_walkinggait(FORWARD[2], TRANSLATION[2], THETA[1], 100, 500,1)
             return False
         elif rotate_error < -error:
         #右轉修正
-            self.control_walkinggait(FORWARD[2], TRANSLATION[2], THETA[3], 500, 500,1)
+            self.control_walkinggait(FORWARD[2], TRANSLATION[2], THETA[3], 100, 500,1)
             return False
         else:
             return True
@@ -282,10 +288,10 @@ class PenaltyKick():
     #修正機器人與目標的距離
         distance_error = self.head_vertical - goal_degree
         if distance_error > error:
-            self.control_walkinggait(FORWARD[1], TRANSLATION[2], THETA[2], 500, 500,1)
+            self.control_walkinggait(FORWARD[0], TRANSLATION[2], THETA[2], 500, 500,1)
             return False
         elif distance_error < -error:
-            self.control_walkinggait(FORWARD[3], TRANSLATION[2], THETA[2], 500, 500,1)
+            self.control_walkinggait(FORWARD[4], TRANSLATION[2], THETA[2], 500, 500,1)
             return False
         else:
             return True
@@ -293,13 +299,16 @@ class PenaltyKick():
     def imu_reset(self,fix,error_range):
     #讓身體imu回正，面向(回正)一開始方向
         yaw_error = self.api.imu_value_Yaw - fix 
-        if abs(yaw_error) > error_range:
+        if abs(yaw_error) >=error_range:
             if yaw_error > 0:#右修
-                self.control_walkinggait(FORWARD[2],TRANSLATION[2],THETA[3],500,500,1)
+                self.control_walkinggait(FORWARD[3],TRANSLATION[2],THETA[3],500,500,1)
                 rospy.logdebug("右轉")
             elif yaw_error < 0:#左修
-                self.control_walkinggait(FORWARD[2],TRANSLATION[2],THETA[1],500,500,1)
+                self.control_walkinggait(FORWARD[3],TRANSLATION[2],THETA[1],500,500,1)
                 rospy.logdebug("左轉")
+            return False
+        else:
+            return True
 
 def strategy():
     rospy.init_node('PK_strategy', anonymous=True, log_level=rospy.DEBUG)   #初始化node
@@ -328,46 +337,48 @@ def strategy():
                                    #down_max = 2048-600,\
                                    scale = 50)
                 else:
-                    pk.state = 'trace_ball_first'
+                    if pk.trace_first:
+                        pk.state = 'trace_ball_first'
+                    else:
+                        pk.state = 'watch_ball'
+                        
+                    
             
             elif pk.state == 'trace_ball_first':
                 pk.trace_ball(pk.ball.center.x,pk.ball.center.y)
-                if abs(pk.head_vertical - KICK_DEGREE) <= KICK_ERROR:
+                if abs(pk.head_vertical - pk.location_y) <= KICK_ERROR:
                     pk.count = pk.count - 1 
-                elif abs(send.imu_value_Yaw) > 5:
-                    pk.imu_reset(0,5)
+                elif not pk.imu_reset(0,5):
                     pk.count = 2
                 elif   pk.direction == 'right':
                     if pk.head_horizon < pk.location_x:
-                        translation_y = TRANSLATION[3]
+                        translation_y = TRANSLATION[4]
                     elif pk.head_horizon >= pk.location_x:
-                        translation_y = TRANSLATION[1]
+                        translation_y = TRANSLATION[0]
                         
                     if pk.head_vertical > pk.location_y:
                         forward_x = FORWARD[0]
                     elif pk.head_vertical <= pk.location_y:
-                        forward_x= FORWARD[3]
-                    pk.control_walkinggait(forward_x,translation_y,0,100,100,1)
+                        forward_x = FORWARD[3]
+                    pk.control_walkinggait(forward_x,translation_y,0,200,200,1)
                     pk.count = 2
 
                 elif pk.direction == 'left':
                     if pk.head_horizon > pk.location_x:
-                        translation_y = TRANSLATION[1]
+                        translation_y = TRANSLATION[0]
                     elif pk.head_horizon <= pk.location_x:
-                        translation_y = TRANSLATION[3]
+                        translation_y = TRANSLATION[4]
 
                     if pk.head_vertical > pk.location_y:
                         forward_x = FORWARD[0]
                     elif pk.head_vertical <= pk.location_y:
                         forward_x = FORWARD[3]
-                    pk.control_walkinggait(forward_x,translation_y,0,100,100,1)
+                    pk.control_walkinggait(forward_x,translation_y,0,200,200,1)
                     pk.count = 2
 
                 if pk.count == 0:
                     send.sendBodyAuto(0, 0, 0, 0, 1, 0)
                     rospy.sleep(2)
-                    walk_stop = True
-                    pk.head_vertical   = 2048
                     if pk.direction == 'left':
                         send.sendBodySector(7911)   #7934
                         rospy.loginfo("右踢")
@@ -377,12 +388,33 @@ def strategy():
                     rospy.sleep(4)
                     send.sendBodySector(29)
                     rospy.sleep(3)
+                    pk.trace_first     = False
+                    pk.head_vertical   = 2048
                     pk.now_forward     = 0 
                     pk.now_translation = 0
                     pk.now_theta       = 0 
-                    pk.state = 'trace_ball_second'
+                    pk.state = 'search_ball'
 
+            elif pk.state == 'watch_ball':
+                pk.trace_ball(pk.ball.center.x,pk.ball.center.y)
+                if abs(pk.ball.center.x) - 160 < 8 and abs(pk.ball.center.y) - 120 < 6:
+                    rospy.sleep(1)
+                    walk_stop = True
+                    pk.state = 'trace_ball_second'
+            
             elif pk.state == 'trace_ball_second':
+                pk.trace_ball(pk.ball.center.x,pk.ball.center.y)
+                if pk.body_trace_rotate(ROTATE_ERROR):
+                    pk.now_theta = 0
+                    if pk.body_trace_straight(SHOT_DEGREE,SHOT_ERROR):
+                        pk.state = 'back_on_track'
+            
+            elif pk.state == 'back_on_track':
+                pk.trace_ball(pk.ball.center.x,pk.ball.center.y)
+                if pk.imu_reset(0,5):
+                    pk.state = 'shoting'
+
+            elif pk.state == 'shoting':
                 pass
 
         else:
