@@ -8,19 +8,25 @@ import numpy as np
 import rospy
 from Python_API import Sendmessage
 
+TEST                       = False
 #--影像中像素點對到中心對於頭部刻度的角度比例--#
 X_RATIO                    = 64.5
 Y_RATIO                    = 40
 #------------------------------------------#
+CORRECT                    = [100,    0,      0]
 #                            [大前進,前進, 原地,   後退,大後退]
 FORWARD                    = [3000, 1000, -500, -1000, -1500]
 #                            [大左移,左移, 原地,   右移,大右移]
-TRANSLATION                = [1500, 1000,    0, -1000, -1500]
+TRANSLATION                = [1700, 1200,    0, -1200, -1700]
 #                            [大左旋,左旋, 原地,   右旋,大右旋]
 THETA                      = [   7,    3,    0,    -3,    -7]
 #
-KICK_DEGREE , KICK_ERROR   = 1275, 20
-SHOT_DEGREE , SHOT_ERROR   = 1375, 20
+KICK_DEGREE_HORIZONTAL_R   = 2400
+KICK_DEGREE_HORIZONTAL_L   = 1850
+KICK_DEGREE_VERTICAL       = 1275
+SHOT_DEGREE                = 1375
+HEAD_ERROR_RANGE_X         = 15
+HEAD_ERROR_RANGE_Y         = 28
 ROTATE_ERROR               = 60  
 #
 DRAW_FUNCTION_FLAG         = True                  #影像繪圖開關
@@ -46,11 +52,19 @@ class ObjectInfo:
                     'Black' :  4,
                     'Red'   :  5,
                     'White' :  6 }
-
+    
+    parameter  = {  'Orange':  2**0,
+                    'Yellow':  2**1,
+                    'Blue'  :  2**2,
+                    'Green' :  2**3,
+                    'Black' :  2**4,
+                    'Red'   :  2**5,
+                    'White' :  2**6 }
     def __init__(self, color, object_type,api):
 
         self.api              = api
         self.color            = self.color_dict[color]
+        self.color_parameter  = self.parameter[color]
         self.edge_max         = Coordinate(0, 0)
         self.edge_min         = Coordinate(0, 0)
         self.center           = Coordinate(0, 0)
@@ -65,7 +79,7 @@ class ObjectInfo:
     def get_obs_object(self):
         max_object_size = max(self.api.color_mask_subject_size[self.color])
         max_object_idx = self.api.color_mask_subject_size[self.color].index(max_object_size)
-        return max_object_idx if max_object_size > 5000 else None
+        return max_object_idx if max_object_size > 500 else None
 
     def get_line_object(self):
         max_object_size = max(self.api.color_mask_subject_size[self.color])
@@ -113,8 +127,6 @@ class PenaltyKick():
         self.ball       = ObjectInfo( "Orange", 'Ball', self.api)
         self.obs        = ObjectInfo( "Blue"  , 'OBS', self.api) 
         self.line       = ObjectInfo( "White" , 'Line', self.api)
-        self.direction  = 'left'
-        self.location_x = 1748 
         self.init()
         
     def init(self):
@@ -129,40 +141,70 @@ class PenaltyKick():
         self.control_head(1, self.head_horizon, 30) 
         self.control_head(2, self.head_vertical, 30)
         #步態
-        self.walkinggait     = 'stop'  
+        self.search_finish   = True 
         self.now_forward     = 0 
         self.now_translation = 0
         self.now_theta       = 0 
 
-        self.count           = 3
-        self.drawImageFunction('init')
+        self.shoting_angle   = 2048
+        self.kick_count      = 2
+        if TEST:
+            self.drawImageFunction('start')
+        else:
+            self.drawImageFunction('init')
         self.api.sendSensorReset(1,1,1)
-        if self.api.DIOValue == 0x09 or self.api.DIOValue == 0x19:
+        if self.api.DIOValue == 0x09:
             self.direction  = 'right'
-            self.location_x = 2288                  #頭水平轉的位置
-        elif self.api.DIOValue == 0x0a or self.api.DIOValue == 0x1a:
+            self.location_y = KICK_DEGREE_HORIZONTAL_R #頭水平轉的位置
+        elif self.api.DIOValue == 0x0a:
             self.direction  = 'straight'
-            self.location_x = 2048                  #頭水平轉的位置
-        elif self.api.DIOValue == 0x08 or self.api.DIOValue == 0x18:
+            self.location_y = 2048                     #頭水平轉的位置
+        elif self.api.DIOValue == 0x00 or self.api.DIOValue == 0x08:
             self.direction  = 'left'
-            self.location_x = 1808                  #頭水平轉的位置
-        self.location_y     = KICK_DEGREE           #頭垂直轉的位置 
-
+            self.location_y = KICK_DEGREE_HORIZONTAL_L #頭水平轉的位置
+        self.location_x     = KICK_DEGREE_VERTICAL           #頭垂直轉的位置 
+        
     def drawImageFunction(self,state):
     #繪圖
         if DRAW_FUNCTION_FLAG:
             if state == 'init':
-                self.api.drawImageFunction(1, 1, 0, 0, 0, 0, 255, 0, 255)
+                self.api.drawImageFunction(1, 0, 0, 0, 0, 0, 0, 255, 0)
                 self.api.drawImageFunction(2, 0, 0, 0, 0, 0, 0, 255, 0)
-                self.api.drawImageFunction(3, 0, 0, 0, 0, 0, 0, 255, 0)
+                self.api.drawImageFunction(3, 1, 0, 0, 0, 0, 0, 127, 255)
+                self.api.drawImageFunction(4, 1, 0, 0, 0, 0, 0, 127, 255)
+                self.api.drawImageFunction(5, 1, 0, 0, 0, 0, 0, 127, 255)
+                self.api.drawImageFunction(6, 1, 0, 0, 0, 0, 0, 127, 255)
+                self.api.drawImageFunction(7, 1, 0, 0, 0, 0, 255, 13, 166)
+                
             elif state == 'start':
-                self.api.drawImageFunction(1, 1, self.ball.edge_min.x,\
+                self.api.drawImageFunction(1, 0, 160, 160, 110, 130, 255, 255, 255)
+                self.api.drawImageFunction(2, 0, 150, 170, 120, 120, 255, 255, 255)
+                self.api.drawImageFunction(3, 0, self.ball.edge_min.x,\
+                                                 self.ball.edge_min.x,\
+                                                 self.ball.edge_min.y,\
+                                                 self.ball.edge_max.y,\
+                                                 0, 127, 255)
+                self.api.drawImageFunction(4, 0, self.ball.edge_max.x,\
                                                  self.ball.edge_max.x,\
                                                  self.ball.edge_min.y,\
                                                  self.ball.edge_max.y,\
-                                                 255, 0, 255)
-                self.api.drawImageFunction(2, 0, 160, 160, 110, 130, 255, 255, 255)
-                self.api.drawImageFunction(3, 0, 150, 170, 120, 120, 255, 255, 255)
+                                                 0, 127, 255)
+                self.api.drawImageFunction(5, 0, self.ball.edge_min.x,\
+                                                 self.ball.edge_max.x,\
+                                                 self.ball.edge_min.y,\
+                                                 self.ball.edge_min.y,\
+                                                 0, 127, 255)
+                self.api.drawImageFunction(6, 0, self.ball.edge_min.x,\
+                                                 self.ball.edge_max.x,\
+                                                 self.ball.edge_max.y,\
+                                                 self.ball.edge_max.y,\
+                                                 0, 127, 255)
+                self.api.drawImageFunction(7, 1, self.obs.edge_min.x,\
+                                                 self.obs.edge_max.x,\
+                                                 self.obs.edge_min.y,\
+                                                 self.obs.edge_max.y,\
+                                                 255, 13, 166)
+                
 
     def object_update(self):
     #更新物件資訊
@@ -182,6 +224,7 @@ class PenaltyKick():
                 self.head_horizon = position
 
             self.api.sendHeadMotor(ID, self.head_horizon, speed)
+
         elif ID == 2:
         #垂直
             if position > MAX_HEAD_VERTICAL:      #超過最大值
@@ -234,18 +277,21 @@ class PenaltyKick():
             if self.head_horizon < right_max:
                 self.head_horizon = right_max
                 self.search = 'down'
+
         elif self.search == 'down':
             self.control_head(2, self.head_vertical, 100)
             self.head_vertical -= scale
             if self.head_vertical < down_max:
                 self.head_vertical = down_max
                 self.search = 'left'
+
         elif self.search == 'left':
             self.control_head(1, self.head_horizon, 100)
             self.head_horizon += scale
             if self.head_horizon > left_max:
                 self.head_horizon = left_max
                 self.search = 'up'
+
         elif self.search == 'up':
             self.control_head(2, self.head_vertical, 100)
             self.head_vertical += scale
@@ -285,30 +331,88 @@ class PenaltyKick():
             return True
 
     def body_trace_straight(self,goal_degree,error):
-    #修正機器人與目標的距離
+    #修正機器人與目標的直線距離
         distance_error = self.head_vertical - goal_degree
         if distance_error > error:
-            self.control_walkinggait(FORWARD[0], TRANSLATION[2], THETA[2], 500, 500,1)
+            self.control_walkinggait(FORWARD[0] + CORRECT[0],\
+                                     TRANSLATION[2] + CORRECT[1],\
+                                     THETA[2] + CORRECT[2],\
+                                     500, 200,1)
             return False
         elif distance_error < -error:
-            self.control_walkinggait(FORWARD[4], TRANSLATION[2], THETA[2], 500, 500,1)
+            self.control_walkinggait(FORWARD[4] + CORRECT[0],\
+                                     TRANSLATION[2] + CORRECT[1],\
+                                     THETA[2] + CORRECT[2],\
+                                     500, 200,1)
             return False
         else:
             return True
-    
+
+    def body_trace_translation(self,goal_degree,error):
+    #修正機器人與目標的平移距離
+        translation_error = self.head_horizon - goal_degree
+        if translation_error > error:
+            self.control_walkinggait(FORWARD[2] + CORRECT[0],\
+                                     TRANSLATION[1] + CORRECT[1],\
+                                     THETA[2] + CORRECT[2], \
+                                    500, 500,1)
+            return False
+        elif translation_error < -error:
+            self.control_walkinggait(FORWARD[2] + CORRECT[0],\
+                                     TRANSLATION[3] + CORRECT[1],\
+                                    THETA[2] + CORRECT[2], 500, 500,1)
+            return False
+        else:
+            return True
+
     def imu_reset(self,fix,error_range):
     #讓身體imu回正，面向(回正)一開始方向
         yaw_error = self.api.imu_value_Yaw - fix 
         if abs(yaw_error) >=error_range:
             if yaw_error > 0:#右修
-                self.control_walkinggait(FORWARD[3],TRANSLATION[2],THETA[3],500,500,1)
+                self.control_walkinggait(FORWARD[3] + CORRECT[0],\
+                                         TRANSLATION[2] + CORRECT[1],\
+                                         THETA[3] + CORRECT[2],\
+                                         200,500,1)
                 rospy.logdebug("右轉")
             elif yaw_error < 0:#左修
-                self.control_walkinggait(FORWARD[3],TRANSLATION[2],THETA[1],500,500,1)
+                self.control_walkinggait(FORWARD[3] + CORRECT[0],\
+                                         TRANSLATION[2] + CORRECT[1],\
+                                         THETA[1] + CORRECT[2],\
+                                         200,500,1)
                 rospy.logdebug("左轉")
             return False
         else:
             return True
+        
+    def obs_dodge(self):
+        obs_count = 0
+        print(abs(self.shoting_angle -2048))
+        if abs(self.shoting_angle -(2048 - self.api.imu_value_Yaw*4096/360*0.15)) > 320:
+            rospy.logwarn("straight~")
+            return 0
+        
+        elif self.obs.edge_max.x < 30:
+            for x in range(0,30,1):
+                for y in range(209,239,1):
+                    if self.api.Label_Model[320*y+x] == self.obs.color_parameter:
+                        obs_count = obs_count + 1
+                        if obs_count > 500:
+                            rospy.logdebug("右移")
+                            return 'shift_right'
+                    
+        
+        elif self.obs.edge_min.x > 290:
+            for x in range(290,319,1):
+                for y in range(209,239,1):
+                    if self.api.Label_Model[320*y+x] == self.obs.color_parameter:
+                        obs_count = obs_count + 1
+                        if obs_count > 500:
+                            rospy.logdebug("左移")
+                            return 'shift_left'
+        
+        else:
+            return 0
 
 def strategy():
     rospy.init_node('PK_strategy', anonymous=True, log_level=rospy.DEBUG)   #初始化node
@@ -325,7 +429,7 @@ def strategy():
             rospy.loginfo(f"目標佔位:{pk.direction}")
             rospy.loginfo(f"水平刻度:{pk.head_horizon},垂直刻度:{pk.head_vertical}")
             rospy.loginfo(f"前後:{pk.now_forward},平移:{pk.now_translation},旋轉:{pk.now_theta}")
-            if walk_stop:
+            if walk_stop and pk.search_finish:
                 send.sendBodyAuto(0, 0, 0, 0, 1, 0)
                 walk_stop = False
 
@@ -340,56 +444,39 @@ def strategy():
                     if pk.trace_first:
                         pk.state = 'trace_ball_first'
                     else:
-                        pk.state = 'watch_ball'
-                        
-                    
+                        pk.state = 'watch_ball'         
             
             elif pk.state == 'trace_ball_first':
                 pk.trace_ball(pk.ball.center.x,pk.ball.center.y)
-                if abs(pk.head_vertical - pk.location_y) <= KICK_ERROR:
-                    pk.count = pk.count - 1 
-                elif not pk.imu_reset(0,5):
-                    pk.count = 2
-                elif   pk.direction == 'right':
-                    if pk.head_horizon < pk.location_x:
-                        translation_y = TRANSLATION[4]
-                    elif pk.head_horizon >= pk.location_x:
-                        translation_y = TRANSLATION[0]
-                        
-                    if pk.head_vertical > pk.location_y:
-                        forward_x = FORWARD[0]
-                    elif pk.head_vertical <= pk.location_y:
-                        forward_x = FORWARD[3]
-                    pk.control_walkinggait(forward_x,translation_y,0,200,200,1)
-                    pk.count = 2
+                if pk.ball.target_size > 5300:
+                    pk.kick_count = pk.kick_count - 1 
+                elif pk.body_trace_translation(pk.location_y,HEAD_ERROR_RANGE_Y):      
+                        if pk.body_trace_straight(pk.location_x,HEAD_ERROR_RANGE_X):
+                            pk.kick_count = pk.kick_count - 1 
+                else:
+                    if pk.imu_reset(0,5):
+                        pk.kick_count = 2
 
-                elif pk.direction == 'left':
-                    if pk.head_horizon > pk.location_x:
-                        translation_y = TRANSLATION[0]
-                    elif pk.head_horizon <= pk.location_x:
-                        translation_y = TRANSLATION[4]
-
-                    if pk.head_vertical > pk.location_y:
-                        forward_x = FORWARD[0]
-                    elif pk.head_vertical <= pk.location_y:
-                        forward_x = FORWARD[3]
-                    pk.control_walkinggait(forward_x,translation_y,0,200,200,1)
-                    pk.count = 2
-
-                if pk.count == 0:
+                if pk.kick_count == 0:
                     send.sendBodyAuto(0, 0, 0, 0, 1, 0)
                     rospy.sleep(2)
                     if pk.direction == 'left':
-                        send.sendBodySector(7911)   #7934
+                        send.sendBodySector(7911)
+                        pk.location_y = KICK_DEGREE_HORIZONTAL_R #頭水平轉的位置
                         rospy.loginfo("右踢")
                     elif pk.direction == 'right':
                         send.sendBodySector(7933)
+                        pk.location_y = KICK_DEGREE_HORIZONTAL_L #頭水平轉的位置
+                        pk.search = 'left'
                         rospy.loginfo("左踢")
                     rospy.sleep(4)
                     send.sendBodySector(29)
                     rospy.sleep(3)
+                    walk_stop          = True
+                    pk.search_finish   = False
                     pk.trace_first     = False
-                    pk.head_vertical   = 2048
+                    pk.head_vertical   = 1848
+                    pk.kick_count      = 2
                     pk.now_forward     = 0 
                     pk.now_translation = 0
                     pk.now_theta       = 0 
@@ -397,16 +484,28 @@ def strategy():
 
             elif pk.state == 'watch_ball':
                 pk.trace_ball(pk.ball.center.x,pk.ball.center.y)
-                if abs(pk.ball.center.x) - 160 < 8 and abs(pk.ball.center.y) - 120 < 6:
+                if abs(pk.ball.center.x) - 160 < 4 and abs(pk.ball.center.y) - 120 < 3:
+                    pk.shoting_angle = pk.head_horizon
                     rospy.sleep(1)
-                    walk_stop = True
+                    pk.search_finish   = True
                     pk.state = 'trace_ball_second'
             
             elif pk.state == 'trace_ball_second':
                 pk.trace_ball(pk.ball.center.x,pk.ball.center.y)
-                if pk.body_trace_rotate(ROTATE_ERROR):
+                shift = pk.obs_dodge()
+                if shift == 'shift_right':
+                    pk.control_walkinggait(FORWARD[1] + CORRECT[0],\
+                                           TRANSLATION[3] + CORRECT[1],\
+                                           THETA[2] + CORRECT[2], \
+                                           200, 500,1)
+                elif shift == 'shift_right':
+                    pk.control_walkinggait(FORWARD[1] + CORRECT[0],\
+                                           TRANSLATION[1] + CORRECT[1],\
+                                           THETA[2] + CORRECT[2], \
+                                           200, 500,1)
+                elif pk.body_trace_rotate(ROTATE_ERROR):
                     pk.now_theta = 0
-                    if pk.body_trace_straight(SHOT_DEGREE,SHOT_ERROR):
+                    if pk.body_trace_straight(SHOT_DEGREE,HEAD_ERROR_RANGE_X):
                         pk.state = 'back_on_track'
             
             elif pk.state == 'back_on_track':
@@ -415,10 +514,34 @@ def strategy():
                     pk.state = 'shoting'
 
             elif pk.state == 'shoting':
-                pass
+                pk.trace_ball(pk.ball.center.x,pk.ball.center.y)
+                if pk.body_trace_straight(pk.location_x,HEAD_ERROR_RANGE_X):
+                    if pk.body_trace_translation(pk.location_y,HEAD_ERROR_RANGE_Y):
+                        pk.kick_count = pk.kick_count - 1 
+                else:
+                    if pk.imu_reset(0,5):
+                        pk.kick_count = 2
+
+                if pk.kick_count == 0:
+                    send.sendBodyAuto(0, 0, 0, 0, 1, 0)
+                    rospy.sleep(2)
+                    if pk.direction == 'left':
+                        send.sendBodySector(7933)
+                        rospy.loginfo("左踢")
+                    elif pk.direction == 'right':
+                        send.sendBodySector(7911)
+                        rospy.loginfo("右踢")
+                    walk_stop          = True
+                    pk.search_finish   = False
+                    pk.state = 'finish_shoting'
+
 
         else:
             rospy.logdebug('strategy close')
+            if TEST:
+                pk.object_update()
+                print(pk.ball.target_size)
+                print(pk.obs.target_size)
             if not walk_stop:
                 send.sendBodyAuto(0, 0, 0, 0, 1, 0)
                 rospy.sleep(2)
