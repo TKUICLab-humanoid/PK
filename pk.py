@@ -15,17 +15,17 @@ TEST                       = False
 X_RATIO                    = 64.5
 Y_RATIO                    = 40
 #------------------------------------------#
-CORRECT                    = [100,    0,      0]
+CORRECT                    = [0,    0,      0]
 #                            [大前進,前進, 原地,   後退,大後退]
 FORWARD                    = [3000, 1000, -500, -1000, -1500]
 #                            [大左移,左移, 原地,   右移,大右移]
-TRANSLATION                = [1700, 1200,    0, -1200, -1700]
+TRANSLATION                = [2000, 1500,    0, -1500, -2000]
 #                            [大左旋,左旋, 原地,   右旋,大右旋]
 THETA                      = [   7,    3,    0,    -3,    -7]
 #
 KICK_DEGREE_HORIZONTAL_R   = 2375
 KICK_DEGREE_HORIZONTAL_L   = 1750
-KICK_DEGREE_VERTICAL       = 1250
+KICK_DEGREE_VERTICAL       = 1230
 SHOT_DEGREE                = 1430
 HEAD_ERROR_RANGE_X         = 15
 HEAD_ERROR_RANGE_Y         = 28
@@ -148,7 +148,7 @@ class PenaltyKick():
     def init(self):
     #初始化
         #重置旗標
-        if self.api.DIOValue == 0x04:
+        if self.api.DIOValue == 0x0c:
             self.state           = 'defender'
         else:
             self.state           = 'search_ball'
@@ -160,8 +160,6 @@ class PenaltyKick():
         #重置頭位置
         self.head_horizon    = HEAD_HORIZONTAL
         self.head_vertical   = HEAD_VERTICAL
-        self.control_head(1, self.head_horizon, 30) 
-        self.control_head(2, self.head_vertical, 30)
         #步態
         self.search_finish   = True 
         self.now_forward     = 0 
@@ -187,6 +185,8 @@ class PenaltyKick():
             self.drawImageFunction('start')
         else:
             self.drawImageFunction('init')
+            self.control_head(1, self.head_horizon, 30) 
+            self.control_head(2, self.head_vertical, 30)
         
     def drawImageFunction(self,state):
     #繪圖
@@ -195,6 +195,7 @@ class PenaltyKick():
             rospy.loginfo(f"目標佔位:{self.direction}")
             rospy.loginfo(f"前後:{self.now_forward},平移:{self.now_translation},旋轉:{self.now_theta}")
         rospy.loginfo(f"水平刻度:{self.head_horizon},垂直刻度:{self.head_vertical}")
+        rospy.logdebug(f"pk.kick_count:{self.kick_count}")
         if DRAW_FUNCTION_FLAG:
             if state == 'init':
                 self.api.drawImageFunction(1, 0, 0, 0, 0, 0, 0, 255, 0)
@@ -374,13 +375,13 @@ class PenaltyKick():
             self.control_walkinggait(FORWARD[0] + CORRECT[0],\
                                      TRANSLATION[2] + CORRECT[1],\
                                      THETA[2] + CORRECT[2],\
-                                     500, 200,1)
+                                     300, 200,1)
             return False
         elif distance_error < -error:
             self.control_walkinggait(FORWARD[4] + CORRECT[0],\
                                      TRANSLATION[2] + CORRECT[1],\
                                      THETA[2] + CORRECT[2],\
-                                     500, 200,1)
+                                     300, 200,1)
             return False
         return True
 
@@ -388,9 +389,9 @@ class PenaltyKick():
     #修正機器人與目標的平移距離
         translation_error = self.head_horizon - goal_degree
         if translation_error > 250:
-            self.control_walkinggait(FORWARD[1] + CORRECT[0],\
+            self.control_walkinggait(FORWARD[2] + CORRECT[0],\
                                      TRANSLATION[0] + CORRECT[1],\
-                                     THETA[2] + CORRECT[2]-1,\
+                                     THETA[2] + CORRECT[2]-2,\
                                      500, 200,1)
             return False
         elif translation_error < -error:
@@ -400,7 +401,7 @@ class PenaltyKick():
                                      500, 200,1)
             return False
         elif translation_error > error:
-            self.control_walkinggait(FORWARD[1] + CORRECT[0],\
+            self.control_walkinggait(FORWARD[2] + CORRECT[0] - 200,\
                                      TRANSLATION[1] + CORRECT[1],\
                                      THETA[2] + CORRECT[2],\
                                      500, 500,1)
@@ -432,13 +433,13 @@ class PenaltyKick():
             return False 
         elif abs(yaw_error) >=error_range:
             if yaw_error > 0:#右修
-                self.control_walkinggait(FORWARD[3] + CORRECT[0],\
+                self.control_walkinggait(FORWARD[2] + CORRECT[0],\
                                          TRANSLATION[2] + CORRECT[1],\
                                          THETA[3] + CORRECT[2],\
                                          200,500,1)
                 rospy.logdebug("右轉")
             elif yaw_error < 0:#左修
-                self.control_walkinggait(FORWARD[3] + CORRECT[0],\
+                self.control_walkinggait(FORWARD[2] + CORRECT[0],\
                                          TRANSLATION[2] + CORRECT[1],\
                                          THETA[1] + CORRECT[2],\
                                          200,500,1)
@@ -447,7 +448,7 @@ class PenaltyKick():
         return True
         
     def obs_dodge(self):
-        if self.ball.target_size < 4500: #要測
+        if self.ball.target_size < 3000: #要測
             if self.direction == 'left' and not self.dodging_obs:
                 if abs(self.obs_left.edge_max.x-self.ball.center.x) < 8: #要測
                     if self.obs_left.edge_max.x < self.ball.center.x:
@@ -501,15 +502,18 @@ def strategy():
     send = Sendmessage()
     pk = PenaltyKick(send)
     walk_stop = True
+    check_find_ball = 0
     r = rospy.Rate(10)
     while not rospy.is_shutdown():
 
         if send.is_start:
+            pk.object_update()
+            pk.drawImageFunction('start')
             if pk.state != 'defender':
-                pk.object_update()
-                pk.drawImageFunction('start')
                 
                 if walk_stop and pk.search_finish:
+                    send.sendBodySector(30)
+                    rospy.sleep(2)
                     send.sendBodyAuto(0, 0, 0, 0, 1, 0)
                     walk_stop = False
 
@@ -528,17 +532,19 @@ def strategy():
                 
                 elif pk.state == 'trace_ball_first':
                     pk.trace_ball(pk.ball.center.x,pk.ball.center.y)
-                    if pk.ball.target_size > 5300:
+                    if pk.ball.target_size > 5400:
                         pk.kick_count = pk.kick_count - 1 
-                    elif pk.body_trace_translation(pk.location_y,HEAD_ERROR_RANGE_Y):      
+                    elif pk.imu_reset(0,5):
+                        if pk.body_trace_translation(pk.location_y,HEAD_ERROR_RANGE_Y):      
                             if pk.body_trace_straight(pk.location_x,HEAD_ERROR_RANGE_X):
                                 pk.kick_count = pk.kick_count - 1 
                     else:
-                        if pk.imu_reset(0,5):
                             pk.kick_count = 2
 
                     if pk.kick_count == 0:
                         send.sendBodyAuto(0, 0, 0, 0, 1, 0)
+                        rospy.sleep(2)
+                        send.sendBodySector(29)
                         rospy.sleep(2)
                         if pk.direction == 'left':
                             send.sendBodySector(7911)
@@ -578,22 +584,7 @@ def strategy():
                             pk.now_theta = 0
                             if pk.body_trace_straight(SHOT_DEGREE,HEAD_ERROR_RANGE_X):
                                 pk.state = 'back_on_track'
-                    # shift = pk.obs_dodge()
-                    # if shift == 'shift_right':
-                    #     pk.control_walkinggait(FORWARD[1] + CORRECT[0],\
-                    #                         TRANSLATION[3] + CORRECT[1],\
-                    #                         THETA[2] + CORRECT[2], \
-                    #                         200, 500,1)
-                    # elif shift == 'shift_right':
-                    #     pk.control_walkinggait(FORWARD[1] + CORRECT[0],\
-                    #                         TRANSLATION[1] + CORRECT[1],\
-                    #                         THETA[2] + CORRECT[2], \
-                    #                         200, 500,1)
-                    # elif pk.body_trace_rotate(ROTATE_ERROR):
-                    #     pk.now_theta = 0
-                    #     if pk.body_trace_straight(SHOT_DEGREE,HEAD_ERROR_RANGE_X):
-                    #         pk.state = 'back_on_track'
-                
+
                 elif pk.state == 'back_on_track':
                     pk.trace_ball(pk.ball.center.x,pk.ball.center.y)
                     if pk.direction == 'left':
@@ -605,11 +596,13 @@ def strategy():
 
                 elif pk.state == 'shoting':
                     pk.trace_ball(pk.ball.center.x,pk.ball.center.y)
-                    if pk.body_trace_translation(pk.location_y,HEAD_ERROR_RANGE_Y):
-                        if pk.body_trace_straight(pk.location_x,HEAD_ERROR_RANGE_X):
-                            pk.kick_count = pk.kick_count - 1 
+                    if pk.ball.target_size > 6000:
+                        pk.kick_count = pk.kick_count - 1 
+                    elif pk.imu_reset(0,5):
+                        if pk.body_trace_translation(pk.location_y,HEAD_ERROR_RANGE_Y):
+                            if pk.body_trace_straight(pk.location_x+50,HEAD_ERROR_RANGE_X):
+                                pk.kick_count = pk.kick_count - 1 
                     else:
-                        if pk.imu_reset(0,5):
                             pk.kick_count = 2
 
                     if pk.kick_count == 0:
@@ -626,33 +619,38 @@ def strategy():
                         pk.state = 'finish_shoting'
 
             else:
+                rospy.loginfo(pk.ball.target_size)
                 if not pk.ball.get_target and not pk.defence:
                         pk.search_ball(#right_max = 2048-600,\
                                     #left_max = 2048+600,\
                                     #up_max = 2048,\
                                     #down_max = 2048-600,\
-                                    scale = 100)
+                                    scale = 30)
                 elif pk.defence:
                     rospy.logwarn("防禦中")
                 else:
                     pk.trace_ball(pk.ball.center.x,pk.ball.center.y)
-                    if pk.ball.target_size > 5500:  #要測
+                    if pk.ball.target_size > 2080 and check_find_ball < 8:  #要測
+                        check_find_ball = check_find_ball +1
+                    elif check_find_ball >= 8:
                         send.sendBodySector(39)         #給定蹲下速度
-                        send.sendWalkParameter('send',\
-                                    stand_height = 42.3)
+                        # send.sendWalkParameter('send',1,\
+                        #             stand_height = 42.3)
                         pk.defence = True
+                    else:
+                        check_find_ball = 0
         else:
             rospy.logdebug('strategy close')
             if TEST:
                 pk.object_update()
                 print(pk.ball.target_size)
-                print(pk.obs.target_size)
             if not walk_stop:
                 send.sendBodyAuto(0, 0, 0, 0, 1, 0)
                 rospy.sleep(2)
                 send.sendBodySector(29)
             pk.init()
             walk_stop = True
+            check_find_ball = 0
         r.sleep()
 
 if __name__ == '__main__':
