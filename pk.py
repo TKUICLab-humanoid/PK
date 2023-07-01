@@ -31,6 +31,7 @@ HEAD_ERROR_RANGE_X         = 15
 HEAD_ERROR_RANGE_Y         = 28
 ROTATE_ERROR               = 60  
 #
+DEGREE_CORRECT             = True
 DRAW_FUNCTION_FLAG         = True                  #影像繪圖開關
 HEAD_HORIZONTAL            = 2048                  #頭水平
 HEAD_VERTICAL              = 1500                  #頭垂直 
@@ -250,6 +251,21 @@ class PenaltyKick():
         self.obs_left.update()
         self.line.update()
 
+    def degree_IMU_correct(self, current_degree):
+        if self.ball.get_target:
+            if DEGREE_CORRECT:
+                if self.api.imu_value_Pitch > 0:
+                    corrected_head_vertical = current_degree - (self.api.imu_value_Pitch / 0.087)
+                #elif send.imu_value_Pitch < 0:
+                    #corrected_head_vertical = current_degree + (send.imu_value_Pitch / 0.087)
+                else:
+                    corrected_head_vertical = current_degree
+            else:
+                corrected_head_vertical = current_degree
+        else:
+            corrected_head_vertical = current_degree
+        return corrected_head_vertical
+
     def control_head(self, ID, position, speed):
     #控制頭轉動
         if ID == 1:
@@ -272,7 +288,7 @@ class PenaltyKick():
             else:
                 self.head_vertical = position
 
-            self.api.sendHeadMotor(ID, self.head_vertical, speed)
+            self.api.sendHeadMotor(ID, self.degree_IMU_correct(self.head_vertical), speed)
 
     def control_walkinggait(self, forward, translation, theta, add_forward, add_translation, add_theta):
     #控制步態參數
