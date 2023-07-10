@@ -15,7 +15,7 @@ TEST                       = False
 X_RATIO                    = 64.5
 Y_RATIO                    = 40
 #
-GO_TO_SHOTTING_DELAY       = 13.5
+GO_TO_SHOTTING_DELAY       = 15.5
 #------------------------------------------#
 ROUTE_PLAN_FORWARD         = [-1500, -2000]
 ROUTE_PLAN_TRANSLATION     = [-1500, -1000]
@@ -24,9 +24,9 @@ ROUTE_PLAN_TIME            = [5, 7]
 #------------------------------------------#
 GOAL_IMU                   = [30,-30]
 #
-CORRECT                    = [-1000,    -500,      1]
+CORRECT                    = [-500,    -500,      1]
 #                            [大前進, 前進, 小前進, 原地, 小前進,   後退, 大後退]
-FORWARD                    = [2000, 1000,   500,    0,  -500, -1000, -2000]
+FORWARD                    = [2500, 1000,   500,    0,  -500, -1000, -2000]
 #                            [大左移,左移,小左移, 原地, 小右移,  右移,大右移]
 TRANSLATION                = [2000, 1000,   500,    0,  -700, -1200, -2200]
 #                            [大左旋,左旋, 原地,   右旋,大右旋]
@@ -96,7 +96,7 @@ class ObjectInfo:
     def get_left_obs_object(self):
         object_idx = None
         for i in range(self.api.color_mask_subject_cnts[self.color]):
-            if 500 < self.api.color_mask_subject_size[self.color][i] and self.api.color_mask_subject_XMax[self.color][i] < 180:
+            if 2000 < self.api.color_mask_subject_size[self.color][i] and self.api.color_mask_subject_XMax[self.color][i] < 180:
                 object_idx = i
         
         return object_idx
@@ -104,7 +104,7 @@ class ObjectInfo:
     def get_right_obs_object(self):
         object_idx = None
         for i in range(self.api.color_mask_subject_cnts[self.color]):
-            if 500 < self.api.color_mask_subject_size[self.color][i] and self.api.color_mask_subject_XMin[self.color][i] > 140:
+            if 2000 < self.api.color_mask_subject_size[self.color][i] and self.api.color_mask_subject_XMin[self.color][i] > 140:
                 object_idx = i
         
         return object_idx
@@ -168,10 +168,6 @@ class PenaltyKick():
             self.state           = 'translate'
         self.defence         = False
         self.search          = 'right'
-        self.dodging_obs     = False
-        self.obs_second      = False
-        self.trace_ball_flag = False
-        self.rotate_finish   = False
         self.state_change    = False
         #重置頭位置
         self.head_horizon    = HEAD_HORIZONTAL
@@ -183,11 +179,7 @@ class PenaltyKick():
         self.now_forward     = 0 
         self.now_translation = 0
         self.now_theta       = 0 
-
-        self.final_ball_x    = 0
-        self.final_ball_y    = 0
-        self.shot_horizon    = 0
-        self.shot_vertical   = 0
+        self.imu_error        = 0
 
         self.shoting_angle   = 2048
         self.count      = 2
@@ -227,6 +219,7 @@ class PenaltyKick():
         rospy.loginfo(f"水平刻度:{self.head_horizon},垂直刻度:{self.head_vertical}")
         rospy.logdebug(f"pk.ball.target_size:{self.ball.target_size}")
         rospy.logdebug(f"ball.x:{self.ball.center.x},ball.y:{self.ball.center.y}")
+        rospy.logdebug(f"imu:{self.api.imu_value_Yaw + self.imu_error}")
         if DRAW_FUNCTION_FLAG:
             if state == 'init':
                 self.api.drawImageFunction(1, 0, 0, 0, 0, 0, 0, 255, 0)
@@ -235,7 +228,7 @@ class PenaltyKick():
                 self.api.drawImageFunction(4, 1, 0, 0, 0, 0, 0, 127, 255)
                 self.api.drawImageFunction(5, 1, 0, 0, 0, 0, 0, 127, 255)
                 self.api.drawImageFunction(6, 1, 0, 0, 0, 0, 0, 127, 255)
-                self.api.drawImageFunction(7, 1, 0, 0, 0, 0, 166, 13, 255)
+                self.api.drawImageFunction(7, 1, 0, 0, 0, 0, 255, 128, 0)
                 self.api.drawImageFunction(8, 1, 0, 0, 0, 0, 255, 13, 166)
                 
             elif state == 'start':
@@ -265,7 +258,7 @@ class PenaltyKick():
                                                  self.obs_right.edge_max.x,\
                                                  self.obs_right.edge_min.y,\
                                                  self.obs_right.edge_max.y,\
-                                                 166, 13, 255)
+                                                 255, 128, 0)
                 self.api.drawImageFunction(8, 1, self.obs_left.edge_min.x,\
                                                  self.obs_left.edge_max.x,\
                                                  self.obs_left.edge_min.y,\
@@ -378,7 +371,7 @@ class PenaltyKick():
             rospy.logwarn(f"看不到球,重新找球")
 
     def body_trace_rotate(self,error):
-    #修正機器人和目標的角度
+    #修正機器人和目標的角度(轉頭用)
         rotate_error = self.head_horizon - HEAD_HORIZONTAL
         if rotate_error > error:
         #左轉修正
@@ -393,7 +386,7 @@ class PenaltyKick():
         return True
 
     def body_trace_straight(self,goal_degree,error):
-    #修正機器人與目標的直線距離
+    #修正機器人與目標的直線距離(轉頭用)
         distance_error = self.head_vertical - goal_degree
         if distance_error > error:
             return FORWARD[0] + CORRECT[0]
@@ -403,7 +396,7 @@ class PenaltyKick():
             return FORWARD[2] + CORRECT[0]
 
     def body_trace_translation(self,goal_degree,error):
-    #修正機器人與目標的平移距離
+    #修正機器人與目標的平移距離(轉頭用)
         translation_error = self.head_horizon - goal_degree
         # print(translation_error,goal_degree)
         if translation_error > 250:
@@ -417,7 +410,7 @@ class PenaltyKick():
         else:
             return TRANSLATION[2] + CORRECT[1]
 
-    def imu_reset(self,fix,error_range):
+    def imu_correct(self,fix,error_range):
     #讓身體imu回正
         yaw_error = self.api.imu_value_Yaw - fix 
         print(yaw_error)
@@ -436,78 +429,29 @@ class PenaltyKick():
                 rospy.logdebug("左轉")
                 return THETA[1] + CORRECT[2]
         return THETA[2] + CORRECT[2]
-        
-    def obs_dodge(self):
-        if self.ball.target_size < 4000: #要測
-            if self.direction == 'left' and not self.dodging_obs:
-                if abs(self.obs_left.edge_max.x-self.ball.center.x) < 12: #要測
-                    if self.obs_left.edge_max.x < self.ball.center.x:
-                        self.api.sendContinuousValue(FORWARD[3]+CORRECT[0], TRANSLATION[5]+CORRECT[1], 0, THETA[2]+CORRECT[2], 0)
-                        rospy.logwarn("第一階段,右平移避障")
-                        rospy.sleep(7)
-                        self.dodging_obs = True
-                        return False
-                    return True
-                    
-            elif self.direction == 'right' and not self.dodging_obs:
-                if abs(self.obs_right.edge_min.x-self.ball.center.x) < 12:
-                    if self.obs_right.edge_min.x > self.ball.center.x:
-                        self.api.sendContinuousValue(FORWARD[3]+CORRECT[0], TRANSLATION[1]+CORRECT[1], 0, THETA[2]+CORRECT[2], 0)
-                        rospy.logwarn("第一階段,左平移避障")
-                        rospy.sleep(7)
-                        self.dodging_obs = True
-                        return False
-                    return True
-            rospy.logdebug("straight~")
-            return True
-        else:
-            if self.obs_second != False:
-                self.dodging_obs = False
-                self.obs_second = True
-            if self.direction == 'left' and not self.dodging_obs:
-                if abs(self.obs_right.edge_min.x-self.ball.center.x) < 8:
-                    if self.obs_right.edge_min.x > self.ball.center.x:
-                        self.api.sendContinuousValue(FORWARD[3]+CORRECT[0], TRANSLATION[1]+CORRECT[1], 0, THETA[2]+CORRECT[2], 0)
-                        rospy.logwarn("第二階段,左平移避障")
-                        rospy.sleep(3)
-                        self.dodging_obs = True
-                        return False
-                    return True
-                    
-            elif self.direction == 'right' and not self.dodging_obs:
-                if abs(self.obs_left.edge_max.x-self.ball.center.x) < 8:
-                    if self.obs_left.edge_max.x < self.ball.center.x:
-                        self.api.sendContinuousValue(FORWARD[3]+CORRECT[0], TRANSLATION[5]+CORRECT[1], 0, THETA[2]+CORRECT[2], 0)
-                        rospy.logwarn("第二階段,右平移避障")
-                        rospy.sleep(3)
-                        self.dodging_obs = True
-                        return False
-                    return True
-                    
-            rospy.logdebug("straight~")
-            return True
-        
-    def checkout_ball(self):
-        if self.direction == 'left':
-            if abs(self.ball.center.x - RIGHT_POINT[0]) < 4 and abs(self.ball.center.y - RIGHT_POINT[1]) < 2:
-                return True
-        elif self.direction == 'right':
-            if abs(self.ball.center.x - LEFT_POINT[0]) < 4 and abs(self.ball.center.y - LEFT_POINT[1]) < 2:
-                return True
-
-        return False
 
     def route_plan(self):
+    #直走
         start = rospy.get_time()
         end   = 99999
         rospy.sleep(1)       #啟動步態後穩定時間
         while (end-start) < GO_TO_SHOTTING_DELAY:
             end = rospy.get_time()
+            self.object_update()
             print(end-start)
-            self.forward     = 4000
+            rospy.logdebug(f"left:{self.obs_left.edge_max.x},right:{self.obs_right.edge_min.x}")
+            self.forward     = FORWARD[0]+2000
             self.translation = TRANSLATION[3] + CORRECT[1]
             self.theta       = THETA[2] + CORRECT[2]
+            if self.obs_left.edge_max.x >= 50:
+                self.theta   = THETA[3] + CORRECT[2]
+            elif self.obs_right.edge_min.x <= 270 and self.obs_right.edge_min.x != 0:
+                self.theta   = THETA[1] + CORRECT[2]
             self.api.sendContinuousValue(self.forward,self.translation,0,self.theta,0)
+
+    def imu_error_reset(self):
+        self.imu_error = self.imu_error + self.api.imu_value_Yaw 
+        self.api.sendSensorReset(1,1,1)
 
 def strategy(): 
     rospy.init_node('PK_strategy', anonymous=True, log_level=rospy.DEBUG)   #初始化node
@@ -523,12 +467,14 @@ def strategy():
             if pk.state != 'defender':
                 
                 if walk_stop and pk.state != 'finish' :
-                    send.sendBodySector(30)
+                    # send.sendBodySector(30)
+                    pk.imu_error_reset()
                     rospy.sleep(2)
                     send.sendBodyAuto(0, 0, 0, 0, 1, 0)
                     walk_stop = False
 
                 if pk.state == 'translate':
+                #起步平移
                     if not pk.ball.get_target:
                         pk.forward = FORWARD[0]
                     else:
@@ -543,7 +489,6 @@ def strategy():
                         else:
                             pk.translation = TRANSLATION[3] + CORRECT[1]
                             pk.count = pk.count - 1
-                    
 
                     pk.control_walkinggait(pk.forward,\
                                         pk.translation,\
@@ -559,7 +504,7 @@ def strategy():
                         rospy.sleep(2)
                 
                 elif pk.state == 'rotate':
-
+                #平移後旋轉
                     if pk.ball.center.x < pk.goal_point[0]:
                         pk.translation = TRANSLATION[1] + CORRECT[1]
                     elif pk.ball.center.x > pk.goal_point[0]:
@@ -567,7 +512,7 @@ def strategy():
                     else:
                         pk.translation = TRANSLATION[3] + CORRECT[1]
 
-                    pk.theta =  pk.imu_reset(pk.goal_imu,5)                    
+                    pk.theta =  pk.imu_correct(pk.goal_imu,5)                    
 
                     if abs(pk.goal_imu - send.imu_value_Yaw) < 3:
                         pk.count = pk.count - 1
@@ -588,10 +533,10 @@ def strategy():
                         pk.theta        = THETA[2] + CORRECT[2]
                         rospy.sleep(0.5)
 
-
                 elif pk.state == 'kick_first':
+                #走到球前開球   ※球的距離(pk.goal_point)要測
                     if pk.ball.center.y < pk.goal_point[1]-5:
-                        pk.forward = FORWARD[1] + CORRECT[0]
+                        pk.forward = FORWARD[0] + CORRECT[0]
                     elif pk.ball.center.y > pk.goal_point[1]+5:
                         pk.forward = FORWARD[5] + CORRECT[0]
                     else:
@@ -605,7 +550,7 @@ def strategy():
                     else:
                         pk.translation = TRANSLATION[3] + CORRECT[1]
                     
-                    pk.theta =  pk.imu_reset(pk.goal_imu,5) 
+                    pk.theta =  pk.imu_correct(pk.goal_imu,5) 
 
                     pk.control_walkinggait(pk.forward,\
                                            pk.translation,\
@@ -643,6 +588,7 @@ def strategy():
                     pk.state = 'search_ball'
 
                 elif pk.state == 'search_ball':
+                #找球
                     if not pk.ball.get_target:
                         pk.search_ball(#right_max = 2048-600,\
                                     #left_max = 2048+600,\
@@ -653,6 +599,7 @@ def strategy():
                         pk.state = 'trace_ball'
                     
                 elif pk.state == 'trace_ball':
+                #找到球,對正中心
                     if abs(pk.ball.center.x-160) > 3 and abs(pk.ball.center.y-120) > 2:
                         pk.trace_object(pk.ball.center.x,pk.ball.center.y)
 
@@ -662,18 +609,54 @@ def strategy():
                         pk.state = 'rotate_to_ball'
 
                 elif pk.state == 'rotate_to_ball':
+                #身體轉向球
                     pk.trace_object(pk.ball.center.x,pk.ball.center.y)
                     if pk.body_trace_rotate(60):
-                        pk.state = 'shot'
+                        send.sendContinuousValue(FORWARD[3]+CORRECT[0], TRANSLATION[3]+CORRECT[1], 0, THETA[2]+CORRECT[2], 0)
+                        pk.head_horizon    = HEAD_HORIZONTAL
+                        pk.head_vertical   = HEAD_VERTICAL-100
+                        pk.control_head(1, pk.head_horizon, 25)
+                        pk.control_head(2, pk.head_vertical, 25)
+                        if pk.api.imu_value_Yaw + pk.imu_error < pk.goal_imu/2 and pk.direction == 'left':
+                            pk.goal_imu = pk.goal_imu/4*-1
+                        elif pk.direction == 'left':
+                            pk.goal_imu = pk.goal_imu/2*-1
 
+                        if pk.api.imu_value_Yaw + pk.imu_error > pk.goal_imu/2 and pk.direction == 'right':
+                            pk.goal_imu = pk.goal_imu/4*-1
+                        elif pk.direction == 'right':
+                            pk.goal_imu = pk.goal_imu/2*-1
+                        
+                        pk.now_forward     = 0 
+                        pk.now_translation = 0
+                        pk.now_theta       = 0
+                        pk.forward     = 0 
+                        pk.translation = 0
+                        pk.theta       = 0  
+                        rospy.sleep(2)
+                        pk.state = 'shot'
+                # elif pk.state == 'go_to_ball':
+                #     pk.trace_object(pk.ball.center.x,pk.ball.center.y)
+                #     if pk.body_trace_straight(HEAD_VERTICAL,5):
+                #         pk.head_horizon    = HEAD_HORIZONTAL
+                #         pk.head_vertical   = HEAD_VERTICAL-100
+                #         pk.control_head(1, pk.head_horizon, 25)
+                #         pk.control_head(2, pk.head_vertical, 25)
+                #         pk.state = 'shot'
                 elif pk.state == 'shot':
-                    if pk.ball.center.y < pk.goal_point[1]-5:
-                        pk.forward = FORWARD[1] + CORRECT[0]
-                    elif pk.ball.center.y > pk.goal_point[1]+5:
+                    print(pk.goal_imu)
+                    if pk.ball.center.y < pk.goal_point[1]-25:
+                        pk.forward = FORWARD[0]+ 500 + CORRECT[0]
+                        go_shot = False
+                    elif pk.ball.center.y > pk.goal_point[1]-15:
                         pk.forward = FORWARD[5] + CORRECT[0]
+                        pk.theta =  pk.imu_correct(pk.goal_imu,5) 
+                        go_shot = False
                     else:
                         pk.forward = FORWARD[3] + CORRECT[0]
-                        pk.count = pk.count - 1
+                        pk.theta =  pk.imu_correct(pk.goal_imu,5)
+                        # pk.count -= 1
+                        go_shot = True
 
                     if pk.ball.center.x < pk.goal_point[0]-10:
                         pk.translation = TRANSLATION[1] + CORRECT[1]
@@ -682,7 +665,8 @@ def strategy():
                     else:
                         pk.translation = TRANSLATION[3] + CORRECT[1]
                     
-                    pk.theta =  pk.imu_reset(pk.goal_imu,5) 
+                    if abs(pk.api.imu_value_Yaw + pk.imu_error - pk.goal_imu) < 5 and go_shot:
+                        pk.count -= 1
 
                     pk.control_walkinggait(pk.forward,\
                                            pk.translation,\
@@ -694,10 +678,10 @@ def strategy():
                         rospy.sleep(2)
                         send.sendBodySector(29)
                         rospy.sleep(2)
-                        if pk.direction == 'left':
+                        if pk.ball.center.x < 160:
                             send.sendBodySector(2000)
                             rospy.loginfo("左踢")
-                        elif pk.direction == 'right' or pk.direction == 'straight':
+                        elif pk.ball.center.x > 160:
                             send.sendBodySector(1000)
                             rospy.loginfo("右踢")
                         while not send.execute:
@@ -713,6 +697,12 @@ def strategy():
                         pk.state = 'finish'
             else:
                 rospy.loginfo(pk.ball.target_size)
+                if walk_stop and not pk.defence:
+                    send.sendBodySector(30)
+                    send.sendSensorReset(1,1,1)
+                    rospy.sleep(2)
+                    send.sendBodyAuto(0, 0, 0, 0, 1, 0)
+                    walk_stop = False
                 if not pk.ball.get_target and not pk.defence:
                         pk.search_ball(#right_max = 2048-600,\
                                     #left_max = 2048+600,\
@@ -742,6 +732,9 @@ def strategy():
                 send.sendBodySector(29)
             elif pk.state == 'finish_shoting':
                 send.sendBodySector(29)
+            elif pk.defence:
+                send.sendWalkParameter('send',\
+                            stand_height = 47.3)
             pk.init()
             walk_stop = True
             check_find_ball = 0
