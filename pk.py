@@ -11,6 +11,7 @@ import rospy
 from Python_API import Sendmessage
 
 TEST                       = False
+STAND_CORRECT              = True
 #--影像中像素點對到中心對於頭部刻度的角度比例--#
 X_RATIO                    = 64.5
 Y_RATIO                    = 40
@@ -22,18 +23,20 @@ ROUTE_PLAN_TRANSLATION     = [-1500, -1000]
 ROUTE_PLAN_THETA           = [-2, 6]
 ROUTE_PLAN_TIME            = [5, 7]
 #------------------------------------------#
-GOAL_IMU                   = [30,-30]
+GOAL_IMU                   = [23,-23]
 #
-CORRECT                    = [-500,    -500,      1]
+CORRECT                    = [-700,    0,      0]
 #                            [大前進, 前進, 小前進, 原地, 小前進,   後退, 大後退]
 FORWARD                    = [2500, 1000,   500,    0,  -500, -1000, -2000]
 #                            [大左移,左移,小左移, 原地, 小右移,  右移,大右移]
 TRANSLATION                = [2000, 1000,   500,    0,  -700, -1200, -2200]
 #                            [大左旋,左旋, 原地,   右旋,大右旋]
-THETA                      = [   7,    3,    0,    -4,    -9]
-#
-LEFT_POINT                 = [140,140,210]
-RIGHT_POINT                = [180,140,110]
+THETA                      = [   7,    3,    0,    -3,    -7]
+#                            [kick_center.x,kick_center.y,shot_center.x]
+LEFT_POINT                 = [          140,          140,          210]
+RIGHT_POINT                = [          150,          135,           70]
+STRAIGHT_POINT_L           = [          150,          145,          140]
+STRAIGHT_POINT_R           = [          170,          145,          180]
 #----------#                       右腳           左腳
 #                              左 ,  中,  右 |  左,  中,   右
 FOOT                       = [105 , 124, 143, 160, 176, 196]
@@ -185,22 +188,23 @@ class PenaltyKick():
         self.count      = 2
         self.api.sendSensorReset(1,1,1)
 
-        if self.api.DIOValue == 0x09:
-            self.direction  = 'right'
-            self.location_x     = KICK_DEGREE_VERTICAL           #頭垂直轉的位置 
+        if self.api.DIOValue == 0x00 or self.api.DIOValue == 0x08:
+            self.direction  = 'left' 
+            self.goal_imu   = GOAL_IMU[1]
+            self.goal_point = LEFT_POINT
+        elif self.api.DIOValue == 0x09:
+            self.direction  = 'right' 
             self.goal_imu   = GOAL_IMU[0]
             self.goal_point = RIGHT_POINT
         elif self.api.DIOValue == 0x0a:
-            self.direction  = 'straight'
-            self.location_y = 2250                     #頭水平轉的位置
-            self.location_x     = KICK_DEGREE_VERTICAL+40           #頭垂直轉的位置 
-            self.goal_imu   = GOAL_IMU[0]
-            self.goal_point = RIGHT_POINT
-        elif self.api.DIOValue == 0x00 or self.api.DIOValue == 0x08:
-            self.direction  = 'left'
-            self.location_x     = KICK_DEGREE_VERTICAL           #頭垂直轉的位置 
-            self.goal_imu   = GOAL_IMU[1]
-            self.goal_point = LEFT_POINT
+            self.direction  = 'straight_l'
+            self.goal_imu   = 0
+            self.goal_point = STRAIGHT_POINT_L
+        elif self.api.DIOValue == 0x0b:
+            self.direction  = 'straight_r'
+            self.goal_imu   = 0
+            self.goal_point = STRAIGHT_POINT_R
+        
         
 
         if TEST:
@@ -219,7 +223,7 @@ class PenaltyKick():
         rospy.loginfo(f"水平刻度:{self.head_horizon},垂直刻度:{self.head_vertical}")
         rospy.logdebug(f"pk.ball.target_size:{self.ball.target_size}")
         rospy.logdebug(f"ball.x:{self.ball.center.x},ball.y:{self.ball.center.y}")
-        rospy.logdebug(f"imu:{self.api.imu_value_Yaw + self.imu_error}")
+        rospy.logdebug(f"now_imu:{self.api.imu_value_Yaw + self.imu_error}")
         if DRAW_FUNCTION_FLAG:
             if state == 'init':
                 self.api.drawImageFunction(1, 0, 0, 0, 0, 0, 0, 255, 0)
@@ -435,12 +439,16 @@ class PenaltyKick():
         start = rospy.get_time()
         end   = 99999
         rospy.sleep(1)       #啟動步態後穩定時間
-        while (end-start) < GO_TO_SHOTTING_DELAY:
+        if self.direction != 'left' or self.direction != 'right':
+            delay = GO_TO_SHOTTING_DELAY
+        else:
+            delay = GO_TO_SHOTTING_DELAY - 3
+        while (end-start) < delay:
             end = rospy.get_time()
             self.object_update()
             print(end-start)
             rospy.logdebug(f"left:{self.obs_left.edge_max.x},right:{self.obs_right.edge_min.x}")
-            self.forward     = FORWARD[0]+2000
+            self.forward     = FORWARD[0]+1500
             self.translation = TRANSLATION[3] + CORRECT[1]
             self.theta       = THETA[2] + CORRECT[2]
             if self.obs_left.edge_max.x >= 50:
@@ -449,9 +457,9 @@ class PenaltyKick():
                 self.theta   = THETA[1] + CORRECT[2]
             self.api.sendContinuousValue(self.forward,self.translation,0,self.theta,0)
 
-    def imu_error_reset(self):
-        self.imu_error = self.imu_error + self.api.imu_value_Yaw 
-        self.api.sendSensorReset(1,1,1)
+    # def imu_error_reset(self):
+    #     self.imu_error = self.imu_error + self.api.imu_value_Yaw 
+    #     self.api.sendSensorReset(1,1,1)
 
 def strategy(): 
     rospy.init_node('PK_strategy', anonymous=True, log_level=rospy.DEBUG)   #初始化node
@@ -467,8 +475,9 @@ def strategy():
             if pk.state != 'defender':
                 
                 if walk_stop and pk.state != 'finish' :
-                    # send.sendBodySector(30)
-                    pk.imu_error_reset()
+                    if STAND_CORRECT:
+                        send.sendBodySector(30)
+                    send.sendSensorReset(1,1,0)
                     rospy.sleep(2)
                     send.sendBodyAuto(0, 0, 0, 0, 1, 0)
                     walk_stop = False
@@ -495,12 +504,16 @@ def strategy():
                                         pk.theta,\
                                         100, 50,0.5,200,50,0.5)
                     if pk.count == 0:
-                        pk.state = 'rotate'
+                        if pk.direction != 'left' or pk.direction != 'right':
+                            pk.state = 'kick_first'
+                        else:
+                            pk.state = 'rotate'
                         pk.count = 2
                         pk.state_change = False
                         pk.forward      = FORWARD[3] + CORRECT[0]
                         pk.translation  = TRANSLATION[3] + CORRECT[1]
                         pk.theta        = THETA[2] + CORRECT[2]
+                        send.sendContinuousValue(pk.forward,pk.translation,0,pk.theta,0)
                         rospy.sleep(2)
                 
                 elif pk.state == 'rotate':
@@ -531,6 +544,7 @@ def strategy():
                         pk.forward      = FORWARD[3] + CORRECT[0]
                         pk.translation  = TRANSLATION[3] + CORRECT[1]
                         pk.theta        = THETA[2] + CORRECT[2]
+                        send.sendContinuousValue(pk.forward,pk.translation,0,pk.theta,0)
                         rospy.sleep(0.5)
 
                 elif pk.state == 'kick_first':
@@ -562,15 +576,15 @@ def strategy():
                         rospy.sleep(2)
                         send.sendBodySector(29)
                         rospy.sleep(2)
-                        if pk.direction == 'left':
+                        if pk.direction == 'left' or pk.direction == 'straight_l':
                             send.sendBodySector(2000)
                             rospy.loginfo("左踢")
-                        elif pk.direction == 'right' or pk.direction == 'straight':
+                        elif pk.direction == 'right' or pk.direction == 'straight_r':
                             send.sendBodySector(1000)
                             rospy.loginfo("右踢")
                         while not send.execute:
                             rospy.logdebug("kick")
-                        rospy.sleep(2)
+                        rospy.sleep(3)
                         send.sendBodySector(29)
                         rospy.sleep(5)
                         walk_stop          = True
@@ -583,8 +597,9 @@ def strategy():
                 elif pk.state == 'obs':
                     pk.route_plan()
                     send.sendBodyAuto(0, 0, 0, 0, 1, 0)
+                    rospy.sleep(1.5)
+                    send.sendBodySector(29)
                     pk.search = 'up'
-                    rospy.sleep(2)
                     pk.state = 'search_ball'
 
                 elif pk.state == 'search_ball':
@@ -593,7 +608,7 @@ def strategy():
                         pk.search_ball(#right_max = 2048-600,\
                                     #left_max = 2048+600,\
                                     #up_max = 2048,\
-                                    #down_max = 2048-600,\
+                                    down_max = 2048-800,\
                                     scale = 50)
                     else:
                         pk.state = 'trace_ball'
@@ -604,7 +619,7 @@ def strategy():
                         pk.trace_object(pk.ball.center.x,pk.ball.center.y)
 
                     else:
-                        rospy.sleep(2)
+                        rospy.sleep(1)
                         walk_stop          = True
                         pk.state = 'rotate_to_ball'
 
@@ -617,12 +632,12 @@ def strategy():
                         pk.head_vertical   = HEAD_VERTICAL-100
                         pk.control_head(1, pk.head_horizon, 25)
                         pk.control_head(2, pk.head_vertical, 25)
-                        if pk.api.imu_value_Yaw + pk.imu_error < pk.goal_imu/2 and pk.direction == 'left':
+                        if pk.api.imu_value_Yaw < pk.goal_imu/2 and pk.direction == 'left':
                             pk.goal_imu = pk.goal_imu/4*-1
                         elif pk.direction == 'left':
                             pk.goal_imu = pk.goal_imu/2*-1
 
-                        if pk.api.imu_value_Yaw + pk.imu_error > pk.goal_imu/2 and pk.direction == 'right':
+                        if pk.api.imu_value_Yaw  > pk.goal_imu/2 and pk.direction == 'right':
                             pk.goal_imu = pk.goal_imu/4*-1
                         elif pk.direction == 'right':
                             pk.goal_imu = pk.goal_imu/2*-1
@@ -644,7 +659,7 @@ def strategy():
                 #         pk.control_head(2, pk.head_vertical, 25)
                 #         pk.state = 'shot'
                 elif pk.state == 'shot':
-                    print(pk.goal_imu)
+                    rospy.logerr(pk.goal_imu)
                     if pk.ball.center.y < pk.goal_point[1]-25:
                         pk.forward = FORWARD[0]+ 500 + CORRECT[0]
                         go_shot = False
@@ -665,7 +680,7 @@ def strategy():
                     else:
                         pk.translation = TRANSLATION[3] + CORRECT[1]
                     
-                    if abs(pk.api.imu_value_Yaw + pk.imu_error - pk.goal_imu) < 5 and go_shot:
+                    if abs(pk.api.imu_value_Yaw  - pk.goal_imu) < 20 and go_shot:
                         pk.count -= 1
 
                     pk.control_walkinggait(pk.forward,\
