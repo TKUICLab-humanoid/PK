@@ -11,12 +11,12 @@ import rospy
 from Python_API import Sendmessage
 
 TEST                       = False
-STAND_CORRECT              = True
+STAND_CORRECT              = False
 #--影像中像素點對到中心對於頭部刻度的角度比例--#
 X_RATIO                    = 64.5
 Y_RATIO                    = 40
 #
-GO_TO_SHOTTING_DELAY       = 15.5
+GO_TO_SHOTTING_DELAY       = 19.5
 #------------------------------------------#
 ROUTE_PLAN_FORWARD         = [-1500, -2000]
 ROUTE_PLAN_TRANSLATION     = [-1500, -1000]
@@ -29,12 +29,12 @@ CORRECT                    = [-700,    0,      0]
 #                            [大前進, 前進, 小前進, 原地, 小前進,   後退, 大後退]
 FORWARD                    = [2500, 1000,   500,    0,  -500, -1000, -2000]
 #                            [大左移,左移,小左移, 原地, 小右移,  右移,大右移]
-TRANSLATION                = [2000, 1000,   500,    0,  -700, -1200, -2200]
+TRANSLATION                = [2000, 1000,   500,    0,  -2000, -2500, -2500]
 #                            [大左旋,左旋, 原地,   右旋,大右旋]
 THETA                      = [   7,    3,    0,    -3,    -7]
 #                            [kick_center.x,kick_center.y,shot_center.x]
-LEFT_POINT                 = [          140,          140,          210]
-RIGHT_POINT                = [          150,          135,           70]
+LEFT_POINT                 = [          125,          136,          200]
+RIGHT_POINT                = [          195,          134,          120]
 STRAIGHT_POINT_L           = [          150,          145,          140]
 STRAIGHT_POINT_R           = [          170,          145,          180]
 #----------#                       右腳           左腳
@@ -367,6 +367,9 @@ class PenaltyKick():
             #------------#
             self.head_horizon  -= round(self.x_degree * 4096 / 360 * 0.15)
             self.head_vertical -= round(self.y_degree * 4096 / 360 * 0.15)
+            if self.state == 'defender':
+                if self.head_vertical > 1500:
+                    self.head_vertical = 1500
             if control_motor == 'doble' or 'horizon':
                 self.control_head(1, self.head_horizon, 25)
             if control_motor == 'doble' or 'vertical':
@@ -572,6 +575,8 @@ def strategy():
                                            100, 50,0.5,200,50,0.5) 
 
                     if pk.count == 0:
+                        send.sendContinuousValue(FORWARD[3],TRANSLATION[3],0,THETA[2],0)
+                        rospy.sleep(2.5)
                         send.sendBodyAuto(0, 0, 0, 0, 1, 0)
                         rospy.sleep(2)
                         send.sendBodySector(29)
@@ -635,7 +640,7 @@ def strategy():
                         if pk.api.imu_value_Yaw < pk.goal_imu/2 and pk.direction == 'left':
                             pk.goal_imu = pk.goal_imu/4*-1
                         elif pk.direction == 'left':
-                            pk.goal_imu = pk.goal_imu/2*-1
+                            pk.goal_imu = pk.goal_imu/2*1.2*-1
 
                         if pk.api.imu_value_Yaw  > pk.goal_imu/2 and pk.direction == 'right':
                             pk.goal_imu = pk.goal_imu/4*-1
@@ -673,7 +678,7 @@ def strategy():
                         # pk.count -= 1
                         go_shot = True
 
-                    if pk.ball.center.x < pk.goal_point[0]-10:
+                    if pk.ball.center.x < pk.goal_point[0]-10 and pk.ball.get_target:
                         pk.translation = TRANSLATION[1] + CORRECT[1]
                     elif pk.ball.center.x > pk.goal_point[0]+10:
                         pk.translation = TRANSLATION[5] + CORRECT[1]
@@ -689,6 +694,8 @@ def strategy():
                                            100, 50,0.5,200,50,0.5) 
 
                     if pk.count == 0:
+                        send.sendContinuousValue(FORWARD[3],TRANSLATION[3],0,THETA[2],0)
+                        rospy.sleep(2.5)
                         send.sendBodyAuto(0, 0, 0, 0, 1, 0)
                         rospy.sleep(2)
                         send.sendBodySector(29)
@@ -712,26 +719,22 @@ def strategy():
                         pk.state = 'finish'
             else:
                 rospy.loginfo(pk.ball.target_size)
-                if walk_stop and not pk.defence:
-                    send.sendBodySector(30)
-                    send.sendSensorReset(1,1,1)
-                    rospy.sleep(2)
-                    send.sendBodyAuto(0, 0, 0, 0, 1, 0)
-                    walk_stop = False
                 if not pk.ball.get_target and not pk.defence:
                         pk.search_ball(#right_max = 2048-600,\
                                     #left_max = 2048+600,\
-                                    #up_max = 2048,\
+                                    up_max = 1500,\
                                     #down_max = 2048-600,\
                                     scale = 30)
                 elif pk.defence:
-                    rospy.logwarn("防禦中")
+                    send.sendBodySector(3001) 
+                    rospy.sleep(0.5)
                 else:
                     pk.trace_object(pk.ball.center.x,pk.ball.center.y)
                     if pk.ball.target_size > 2080 and check_find_ball < 8:  #要測
                         check_find_ball = check_find_ball +1
-                    elif check_find_ball >= 8:
-                        send.sendBodySector(39)         #給定蹲下速度
+                    elif check_find_ball >= 5:
+                        send.sendBodySector(300)         #給定蹲下速度
+                        rospy.sleep(2)
                         # send.sendWalkParameter('send',\
                         #             stand_height = 42.3)
                         pk.defence = True
@@ -748,8 +751,10 @@ def strategy():
             elif pk.state == 'finish_shoting':
                 send.sendBodySector(29)
             elif pk.defence:
-                send.sendWalkParameter('send',\
-                            stand_height = 47.3)
+                rospy.sleep(2)
+                send.sendBodySector(3000)
+                pk.defence = False
+                rospy.sleep(2)
             pk.init()
             walk_stop = True
             check_find_ball = 0
